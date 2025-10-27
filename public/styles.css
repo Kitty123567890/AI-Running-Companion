@@ -25,8 +25,9 @@ body {
   position: sticky; top: 0; background: rgba(12,15,18,0.9); backdrop-filter: blur(8px);
 }
 .app-header h1 { font-size: 20px; margin: 0; letter-spacing: 0.4px; }
-.header-actions { display: flex; align-items: center; gap: 12px; }
-.header-actions input[type="password"] {
+.header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.header-actions input[type="password"],
+.header-actions input[type="text"] {
   background: var(--panel); color: var(--text); border: 1px solid var(--border);
   padding: 8px 10px; border-radius: 8px; width: 280px;
 }
@@ -91,4 +92,3 @@ button#clearRun, button#clearChat {
 
 .tip { color: var(--accent-2); }
 .warn { color: var(--danger); }
-

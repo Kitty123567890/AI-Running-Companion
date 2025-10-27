@@ -1,6 +1,8 @@
 # AI-Running-Companion
 An AI companion who can chat with you while you are running and analyse your running data .
 
+中文说明请见下方「使用说明（中文）」章节。
+
 ## How to Use
 
 1) Open the app
@@ -38,3 +40,96 @@ An AI companion who can chat with you while you are running and analyse your run
 - No mic input option: Your browser may not support the Web Speech API; you can still chat via text.
 - No spoken replies: Enable "Voice coach" and confirm your system has TTS voices enabled.
 - API errors: If OpenAI calls fail, the app automatically falls back to local coaching.
+
+## LLM Configuration (OpenAI‑compatible)
+- Toggle "Use OpenAI‑compatible API" in the header to enable LLM replies.
+- Set these fields in the header:
+  - API Base: The base URL for an OpenAI‑compatible endpoint (default OpenAI: `https://api.openai.com/v1`).
+  - Model: The model name your endpoint exposes (e.g., `gpt-4o-mini`, `llama3.1`, etc.).
+  - API key: Optional; some local servers ignore auth. If required, enter your key (e.g., `ollama`).
+- The app persists API Base and Model in `localStorage` (not the key by default).
+
+Examples
+- OpenAI
+  - API Base: `https://api.openai.com/v1`
+  - Model: `gpt-4o-mini`
+  - API Key: your OpenAI key
+- Ollama (local)
+  - API Base: `http://localhost:11434/v1`
+  - Model: name exposed by `ollama list` (e.g., `llama3.1`)
+  - API Key: optional (some setups use `ollama` or none)
+- LM Studio (local)
+  - API Base: `http://localhost:1234/v1`
+  - Model: the served model name in LM Studio
+  - API Key: often optional
+
+Notes
+- Endpoint used: `<API Base>/chat/completions` with the OpenAI Chat schema.
+- CORS: Your local server must allow browser requests from your origin.
+- Security: Entering an API key in the browser exposes it to users. For production, proxy calls through your backend.
+
+---
+
+## 使用说明（中文）
+
+1）打开应用
+- 方式 A：直接双击 `index.html` 用浏览器打开。
+- 方式 B（推荐）：本地启动静态服务器，避免浏览器的本地文件安全限制。
+  - Python：`python3 -m http.server`，然后访问 `http://localhost:8000`
+
+2）填写跑步数据
+- 填写目的地、距离（公里）、时长（分钟）、平均心率（次/分）、年龄（可选）和备注。
+- 点击「保存/更新」。应用会将数据保存到浏览器的 localStorage，刷新页面仍会保留。
+- 面板会展示简要汇总和一条重点建议。
+
+3）与教练聊天
+- 在输入框输入问题后回车或点击「发送」。
+- 常见话题：配速、心率区间、补水、补给、热身、放松、伤病提醒等。
+- 点击「清空」可清除聊天记录。
+
+4）使用语音功能
+- 点击麦克风按钮开始说话；再次点击停止识别。
+- 顶部开关「语音教练」可启用/关闭语音播报（TTS）。
+- 说明：
+  - 语音识别使用 Web Speech API（webkitSpeechRecognition），在 Chromium 内核浏览器上效果更佳。
+  - 语音播报依赖系统/浏览器内置的语音引擎。
+
+5）可选：接入兼容 OpenAI 的 LLM
+- 打开「使用兼容 OpenAI 的接口」开关，填写 API 基址、模型和（可选）密钥，即可获得大模型生成的回复。
+- 安全提示：此示例在浏览器中直接调用接口，若输入密钥，可能会暴露给使用者。生产环境建议通过自有后端代理。
+
+## 提示与数据处理
+- 配速、心率区、补水与补给建议由本地规则引擎计算完成；大模型仅为可选增强。
+- 跑步数据仅存储于浏览器 `localStorage`；可通过「清空」重置。
+- 健康声明：所有建议仅供参考，不构成医疗建议。
+
+## 常见问题（FAQ）
+- 没有麦克风输入：可能是浏览器不支持 Web Speech API；仍可使用文字聊天。
+- 没有语音播报：开启「语音教练」，并确认系统/浏览器语音引擎可用。
+- 接口报错：若兼容 OpenAI 的接口调用失败，应用会自动回落到本地规则教练。
+
+## 大模型配置（兼容 OpenAI）
+- 在页面顶部启用「使用兼容 OpenAI 的接口」，并填写：
+  - API 基址：兼容 OpenAI 的接口地址（OpenAI 默认：`https://api.openai.com/v1`）。
+  - 模型：接口提供的模型名称（如 `gpt-4o-mini`、`llama3.1` 等）。
+  - API 密钥：可选；某些本地服务可忽略认证。需要时请填写（如 `ollama`）。
+- 应用会将 API 基址与模型名称保存到 `localStorage`（默认不保存密钥）。
+
+示例
+- OpenAI
+  - API 基址：`https://api.openai.com/v1`
+  - 模型：`gpt-4o-mini`
+  - API 密钥：你的 OpenAI key
+- Ollama（本地）
+  - API 基址：`http://localhost:11434/v1`
+  - 模型：使用 `ollama list` 中的名称（如 `llama3.1`）
+  - API 密钥：可选（有些环境使用 `ollama` 或无需密钥）
+- LM Studio（本地）
+  - API 基址：`http://localhost:1234/v1`
+  - 模型：LM Studio 中对外提供的模型名称
+  - API 密钥：通常可选
+
+注意
+- 实际调用的端点为：`<API 基址>/chat/completions`，遵循 OpenAI Chat schema。
+- CORS：你的本地服务需要允许来自该页面的跨域访问。
+- 安全：浏览器内输入密钥存在泄露风险；生产环境建议走后端代理。

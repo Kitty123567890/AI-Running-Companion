@@ -8,71 +8,73 @@
   </head>
   <body>
     <header class="app-header">
-      <h1>AI Running Companion</h1>
+      <h1>AI 跑步教练</h1>
       <div class="header-actions">
         <label class="toggle">
           <input type="checkbox" id="voiceToggle" checked />
-          <span>Voice coach</span>
+          <span>语音教练</span>
         </label>
         <label class="toggle">
           <input type="checkbox" id="useOpenAI" />
-          <span>Use OpenAI API</span>
+          <span>使用兼容 OpenAI 的接口</span>
         </label>
-        <input id="openaiKey" type="password" placeholder="OpenAI API key (optional)" />
+        <input id="openaiBase" type="text" placeholder="API 基址（可选，如 http://localhost:11434/v1）" />
+        <input id="modelName" type="text" placeholder="模型（如 gpt-4o-mini 或 llama3.1）" />
+        <input id="openaiKey" type="password" placeholder="API 密钥（可选；如 ollama）" />
       </div>
     </header>
 
     <main class="app">
       <section class="panel run-panel">
-        <h2>Run Details</h2>
+        <h2>跑步数据</h2>
         <form id="runForm" class="run-form">
           <div class="field">
-            <label for="destination">Destination</label>
-            <input id="destination" name="destination" type="text" placeholder="e.g., Central Park loop" />
+            <label for="destination">目的地</label>
+            <input id="destination" name="destination" type="text" placeholder="例如：中央公园环线" />
           </div>
           <div class="field">
-            <label for="distance">Distance (km)</label>
-            <input id="distance" name="distance" type="number" min="0" step="0.1" placeholder="e.g., 5" />
+            <label for="distance">距离（公里）</label>
+            <input id="distance" name="distance" type="number" min="0" step="0.1" placeholder="例如：5" />
           </div>
           <div class="field">
-            <label for="duration">Duration (min)</label>
-            <input id="duration" name="duration" type="number" min="0" step="1" placeholder="e.g., 30" />
+            <label for="duration">时长（分钟）</label>
+            <input id="duration" name="duration" type="number" min="0" step="1" placeholder="例如：30" />
           </div>
           <div class="field">
-            <label for="avgHr">Avg Heart Rate (bpm)</label>
-            <input id="avgHr" name="avgHr" type="number" min="0" step="1" placeholder="e.g., 150" />
+            <label for="avgHr">平均心率（次/分）</label>
+            <input id="avgHr" name="avgHr" type="number" min="0" step="1" placeholder="例如：150" />
           </div>
           <div class="field">
-            <label for="age">Age (yrs, optional)</label>
-            <input id="age" name="age" type="number" min="0" step="1" placeholder="e.g., 35" />
+            <label for="age">年龄（可选）</label>
+            <input id="age" name="age" type="number" min="0" step="1" placeholder="例如：35" />
           </div>
           <div class="field">
-            <label for="notes">Notes</label>
-            <input id="notes" name="notes" type="text" placeholder="any context: hills, hot, intervals" />
+            <label for="notes">备注</label>
+            <input id="notes" name="notes" type="text" placeholder="例如：爬坡、炎热、间歇等情况" />
           </div>
           <div class="actions">
-            <button type="submit">Save/Update</button>
-            <button type="button" id="clearRun">Clear</button>
+            <button type="submit">保存/更新</button>
+            <button type="button" id="clearRun">清空</button>
           </div>
         </form>
         <div id="runSummary" class="run-summary"></div>
       </section>
 
       <section class="panel chat-panel">
-        <h2>Coach Chat</h2>
+        <h2>教练聊天</h2>
         <div id="chat" class="chat"></div>
         <form id="chatForm" class="chat-input">
-          <button type="button" id="micBtn" title="Hold to speak">🎤</button>
-          <input id="message" type="text" autocomplete="off" placeholder="Ask the coach anything…" />
-          <button type="submit">Send</button>
-          <button type="button" id="clearChat" title="Clear chat">Clear</button>
+          <button type="button" id="micBtn" title="点击说话">🎤</button>
+          <input id="message" type="text" autocomplete="off" placeholder="向教练提问……" />
+          <button type="submit">发送</button>
+          <button type="button" id="clearChat" title="清空聊天">清空</button>
         </form>
       </section>
     </main>
 
     <footer class="app-footer">
       <small>
-        Tips are educational only and not medical advice. Consult a professional for health concerns.
+        以上建议仅供参考，不构成医疗建议。如有健康问题请咨询专业人士。
       </small>
     </footer>
 
@@ -80,4 +82,3 @@
     <script src="public/app.js"></script>
   </body>
   </html>
-
