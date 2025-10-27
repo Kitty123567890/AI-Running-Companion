@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Running Companion</title>
+    <link rel="stylesheet" href="public/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>AI Running Companion</h1>
+      <div class="header-actions">
+        <label class="toggle">
+          <input type="checkbox" id="voiceToggle" checked />
+          <span>Voice coach</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="useOpenAI" />
+          <span>Use OpenAI API</span>
+        </label>
+        <input id="openaiKey" type="password" placeholder="OpenAI API key (optional)" />
+      </div>
+    </header>
+
+    <main class="app">
+      <section class="panel run-panel">
+        <h2>Run Details</h2>
+        <form id="runForm" class="run-form">
+          <div class="field">
+            <label for="destination">Destination</label>
+            <input id="destination" name="destination" type="text" placeholder="e.g., Central Park loop" />
+          </div>
+          <div class="field">
+            <label for="distance">Distance (km)</label>
+            <input id="distance" name="distance" type="number" min="0" step="0.1" placeholder="e.g., 5" />
+          </div>
+          <div class="field">
+            <label for="duration">Duration (min)</label>
+            <input id="duration" name="duration" type="number" min="0" step="1" placeholder="e.g., 30" />
+          </div>
+          <div class="field">
+            <label for="avgHr">Avg Heart Rate (bpm)</label>
+            <input id="avgHr" name="avgHr" type="number" min="0" step="1" placeholder="e.g., 150" />
+          </div>
+          <div class="field">
+            <label for="age">Age (yrs, optional)</label>
+            <input id="age" name="age" type="number" min="0" step="1" placeholder="e.g., 35" />
+          </div>
+          <div class="field">
+            <label for="notes">Notes</label>
+            <input id="notes" name="notes" type="text" placeholder="any context: hills, hot, intervals" />
+          </div>
+          <div class="actions">
+            <button type="submit">Save/Update</button>
+            <button type="button" id="clearRun">Clear</button>
+          </div>
+        </form>
+        <div id="runSummary" class="run-summary"></div>
+      </section>
+
+      <section class="panel chat-panel">
+        <h2>Coach Chat</h2>
+        <div id="chat" class="chat"></div>
+        <form id="chatForm" class="chat-input">
+          <button type="button" id="micBtn" title="Hold to speak">🎤</button>
+          <input id="message" type="text" autocomplete="off" placeholder="Ask the coach anything…" />
+          <button type="submit">Send</button>
+          <button type="button" id="clearChat" title="Clear chat">Clear</button>
+        </form>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <small>
+        Tips are educational only and not medical advice. Consult a professional for health concerns.
+      </small>
+    </footer>
+
+    <script src="public/analysis.js"></script>
+    <script src="public/app.js"></script>
+  </body>
+  </html>
+
