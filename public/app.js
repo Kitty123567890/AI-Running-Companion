@@ -16,6 +16,7 @@
   const startRunBtn = document.getElementById('startRun');
   const stopRunBtn = document.getElementById('stopRun');
   const destField = document.getElementById('destField');
+  const searchPlaceBtn = document.getElementById('searchPlace');
   const mapEl = document.getElementById('map');
 
   // Metrics display elements
@@ -49,9 +50,15 @@
     // map state
     map: null,
     routeLine: null,
+    routePlanLine: null,
     posMarker: null,
     destMarker: null,
     startMarker: null,
+    weather: { lastAt: 0, tempC: null, windKph: null, weatherCode: null, desc: null },
+    // milestones
+    lastKmSpoken: 0,
+    lastKmAtTime: null,
+    lastKmAtDist: 0,
   };
 
   // Map helpers
@@ -104,6 +111,8 @@
     }
     // Follow user when running
     state.map.setView([point.lat, point.lng], Math.max(state.map.getZoom(), 15));
+    // Plan/update route if destination exists
+    maybePlanRoute();
   }
 
   function clearRouteOnMap() {
@@ -120,11 +129,15 @@
       state.destMarker.setLatLng([lat, lng]);
     }
     if (label) { try { state.destMarker.bindPopup(label); } catch {} }
+    // Try to plan route once destination is set
+    maybePlanRoute();
   }
 
   function removeDestMarker() {
     if (state.destMarker && state.map) { try { state.map.removeLayer(state.destMarker); } catch {} }
     state.destMarker = null;
+    if (state.routePlanLine && state.map) { try { state.map.removeLayer(state.routePlanLine); } catch {} }
+    state.routePlanLine = null;
   }
 
   function setDestinationFromMap(lat, lng) {
@@ -229,7 +242,7 @@
     if (!isFinite(minPerKm) || minPerKm <= 0) return '-';
     const min = Math.floor(minPerKm);
     const sec = Math.round((minPerKm - min) * 60);
-    return `${min}:${sec.toString().padStart(2,'0')}/公里`;
+    return `${min}分${sec.toString().padStart(2,'0')}秒/公里`;
   }
   function fmtTime(sec){
     if (!isFinite(sec) || sec < 0) return '-';
@@ -237,6 +250,34 @@
     const m = Math.floor((sec%3600)/60);
     const s = Math.floor(sec%60);
     return h>0 ? `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}` : `${m}:${s.toString().padStart(2,'0')}`;
+  }
+
+  // Encourage each kilometer
+  function maybeAnnounceKilometer(){
+    const kmDone = Math.floor(state.totalDistanceKm || 0);
+    const last = state.lastKmSpoken || 0;
+    if (kmDone > last && kmDone >= 1){
+      const now = Date.now();
+      const lastTime = state.lastKmAtTime || state.startTime || now;
+      const lastDist = state.lastKmAtDist || 0;
+      const deltaMin = (now - lastTime)/60000;
+      const deltaDist = Math.max(0, (state.totalDistanceKm || 0) - lastDist);
+      let lapPace = (deltaDist > 0.2) ? (deltaMin / deltaDist) : (state.run.instPaceMinPerKm || state.run.avgPaceMinPerKm || null);
+      const lapLabel = isFinite(lapPace) ? fmtPaceMinPerKm(lapPace) : '-';
+      const phrases = [
+        (n, p)=>`已完成第 ${n} 公里，保持！该公里配速 ${p}。`,
+        (n)=>`第 ${n} 公里到手，继续稳住节奏！`,
+        (n)=>`不错！第 ${n} 公里完成，注意放松肩颈。`,
+        (n)=>`第 ${n} 公里，呼吸顺畅，前进！`,
+      ];
+      const f = phrases[kmDone % phrases.length];
+      const msg = f(kmDone, lapLabel);
+      addMsg('assistant', msg);
+      speak(msg);
+      state.lastKmSpoken = kmDone;
+      state.lastKmAtTime = now;
+      state.lastKmAtDist = state.totalDistanceKm || 0;
+    }
   }
 
   function parseDestInput(s){
@@ -312,6 +353,10 @@
     // Update map
     initMapIfNeeded();
     updateRouteOnMap(point);
+    // Weather (throttled)
+    maybeFetchWeather(point.lat, point.lng);
+    // Kilometer encouragement
+    maybeAnnounceKilometer();
     maybeCoachRealtime();
   }
 
@@ -327,8 +372,13 @@
     state.track = [];
     state.totalDistanceKm = 0;
     state.startTime = Date.now();
+    state.lastKmSpoken = 0; state.lastKmAtTime = state.startTime; state.lastKmAtDist = 0;
     // fresh route visuals
     clearRouteOnMap();
+    // keep any previous planned route only when a destination is set; otherwise clear
+    if (!(state.run && isFinite(state.run?.destLat) && isFinite(state.run?.destLng))) {
+      removeDestMarker();
+    }
     startRunBtn.disabled = true;
     stopRunBtn.disabled = false;
     updateUi();
@@ -363,6 +413,97 @@
     if (tips.length){ addMsg('assistant', `本次结束。${tips[0]}`); speak(tips[0]); }
   }
 
+  // --- Weather ---
+  function weatherDescFromCode(code){
+    const map = {
+      0: '晴', 1: '多云', 2: '多云', 3: '阴',
+      45: '雾', 48: '雾', 51: '小毛毛雨', 53: '毛毛雨', 55: '大毛毛雨',
+      56: '小冻雨', 57: '冻雨', 61: '小雨', 63: '中雨', 65: '大雨',
+      66: '小冻雨', 67: '冻雨', 71: '小雪', 73: '中雪', 75: '大雪',
+      77: '雪粒', 80: '阵雨', 81: '阵雨', 82: '强阵雨', 85: '阵雪', 86: '强阵雪',
+      95: '雷雨', 96: '雷雨伴有冰雹', 99: '强雷雨伴有冰雹'
+    };
+    return map[code] || '天气未知';
+  }
+  async function fetchWeather(lat, lng){
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('weather http ' + res.status);
+      const data = await res.json();
+      const cw = data.current_weather || {};
+      const tempC = cw.temperature;
+      const wind = cw.windspeed; // km/h
+      const code = cw.weathercode;
+      state.weather = {
+        lastAt: Date.now(),
+        tempC: isFinite(tempC) ? tempC : null,
+        windKph: isFinite(wind) ? wind : null,
+        weatherCode: code,
+        desc: weatherDescFromCode(code)
+      };
+    } catch (e) {
+      console.warn('weather fetch failed', e);
+    }
+  }
+  function maybeFetchWeather(lat, lng){
+    const now = Date.now();
+    if (!state.weather.lastAt || now - state.weather.lastAt > 10 * 60 * 1000) {
+      fetchWeather(lat, lng);
+    }
+  }
+
+  // --- Geocoding & Route planning ---
+  async function geocodePlace(name){
+    const q = (name||'').trim(); if (!q) return null;
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error('geocode http ' + res.status);
+      const arr = await res.json();
+      if (!arr || !arr.length) return null;
+      const it = arr[0];
+      return { lat: Number(it.lat), lng: Number(it.lon), label: it.display_name };
+    } catch (e) {
+      console.warn('geocode failed', e);
+      return null;
+    }
+  }
+
+  async function planRoute(from, to){
+    if (!from || !to || !state.map) return;
+    try {
+      const url = `https://router.project-osrm.org/route/v1/foot/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('route http ' + res.status);
+      const data = await res.json();
+      const route = data.routes && data.routes[0];
+      if (!route || !route.geometry) return;
+      const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      if (state.routePlanLine && state.map) {
+        try { state.map.removeLayer(state.routePlanLine); } catch {}
+      }
+      state.routePlanLine = L.polyline(coords, { color: '#3cb371', weight: 4, dashArray: '6,4' }).addTo(state.map);
+      // Fit if we don't yet have much track
+      if (!state.track.length || state.track.length < 3) {
+        const group = L.featureGroup([state.routePlanLine]);
+        state.map.fitBounds(group.getBounds(), { padding: [30,30] });
+      }
+    } catch (e) {
+      console.warn('route plan failed', e);
+    }
+  }
+
+  function maybePlanRoute(){
+    if (!state.map) return;
+    if (state.run && isFinite(state.run?.destLat) && isFinite(state.run?.destLng)) {
+      const last = state.track[state.track.length-1];
+      if (last) {
+        planRoute({ lat: last.lat, lng: last.lng }, { lat: state.run.destLat, lng: state.run.destLng });
+      }
+    }
+  }
+
   async function maybeCoachRealtime(){
     const now = Date.now();
     // Speak at most once every 30s, and only after we have at least 200m and 60s
@@ -378,6 +519,11 @@
       elapsedSec,
       toDestKm: state.run.toDestKm,
       destLabel: state.run.destLabel || state.run.destination,
+      weather: state.weather && {
+        temperatureC: state.weather.tempC,
+        windKph: state.weather.windKph,
+        desc: state.weather.desc
+      },
     };
     let advice = '';
     // Prefer cloud LLM if配置开启
@@ -426,7 +572,7 @@
 
   async function fetchOpenAI({ userText, run, apiKey, apiBase, model }) {
     // 注意：浏览器中使用 API Key 存在泄露风险，生产环境请走后端代理。
-    const sys = `你是一名专业的跑步教练。你可以结合用户的实时跑步数据（位置、即时配速、平均配速、已跑距离、与目的地距离、年龄/性别）提供中文建议，不必等待用户提问。每次建议不超过120字，务求具体可执行。`;
+    const sys = `你是一名专业的跑步教练。你可以结合用户的实时跑步数据（位置、即时配速、平均配速、已跑距离、与目的地距离、年龄/性别、当地天气）提供中文建议，不必等待用户提问。每次建议不超过120字，务求具体可执行。`;
     const ctx = `实时跑步数据 JSON：${JSON.stringify({
       mode: state.run.mode,
       instPaceMinPerKm: state.run.instPaceMinPerKm,
@@ -435,7 +581,12 @@
       toDestKm: state.run.toDestKm,
       age: state.run.age,
       gender: state.run.gender,
-      destLabel: state.run.destLabel || state.run.destination
+      destLabel: state.run.destLabel || state.run.destination,
+      weather: state.weather && {
+        temperatureC: state.weather.tempC,
+        windKph: state.weather.windKph,
+        desc: state.weather.desc
+      }
     })}`;
     const messages = [
       { role: 'system', content: sys },
@@ -509,6 +660,35 @@
   });
   startRunBtn.addEventListener('click', startWatching);
   stopRunBtn.addEventListener('click', stopWatching);
+  if (searchPlaceBtn) {
+    searchPlaceBtn.addEventListener('click', async () => {
+      const input = document.getElementById('destination');
+      const q = input ? input.value : '';
+      if (!q.trim()) { addMsg('assistant','请输入地名或经纬度后再搜索。'); return; }
+      addMsg('assistant', `正在搜索：${q} ...`);
+      const res = await geocodePlace(q);
+      if (!res) { addMsg('assistant', '未找到匹配地点。请尝试更具体的名称。'); return; }
+      // Switch to destination mode
+      const radios = runForm.querySelectorAll('input[name="mode"]');
+      radios.forEach(r => { r.checked = (r.value === 'dest'); });
+      destField.style.display = '';
+      if (input) input.value = res.label;
+      state.run.mode = 'dest';
+      state.run.destination = res.label;
+      state.run.destLabel = res.label;
+      state.run.destLat = res.lat; state.run.destLng = res.lng;
+      saveRunToStorage();
+      updateUi();
+      initMapIfNeeded();
+      updateDestMarker(res.lat, res.lng, res.label);
+      addMsg('assistant', `已设置目的地：${res.label}`);
+      // Plan route from current position if available
+      const last = state.track[state.track.length-1];
+      if (last) {
+        planRoute({ lat: last.lat, lng: last.lng }, { lat: res.lat, lng: res.lng });
+      }
+    });
+  }
 
   clearRunBtn.addEventListener('click', () => {
     // Only clear session metrics; keep age/gender/mode/destination

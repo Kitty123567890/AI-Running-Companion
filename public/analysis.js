@@ -24,7 +24,7 @@ function paceFromDistanceAndDuration(distanceKm, durationMin) {
   const paceMinPerKm = durationMin / distanceKm;
   const min = Math.floor(paceMinPerKm);
   const sec = Math.round((paceMinPerKm - min) * 60);
-  return { paceMinPerKm, label: `${min}:${sec.toString().padStart(2, "0")}/km` };
+  return { paceMinPerKm, label: `${min}分${sec.toString().padStart(2, "0")}秒/公里` };
 }
 
 function analyzeRun(run) {
@@ -41,7 +41,7 @@ function analyzeRun(run) {
   if (!p && run.avgPaceMinPerKm) {
     const min = Math.floor(run.avgPaceMinPerKm);
     const sec = Math.round((run.avgPaceMinPerKm - min) * 60);
-    p = { paceMinPerKm: run.avgPaceMinPerKm, label: `${min}:${sec.toString().padStart(2, "0")}/km` };
+    p = { paceMinPerKm: run.avgPaceMinPerKm, label: `${min}分${sec.toString().padStart(2, "0")}秒/公里` };
   }
   if (p) recs.push(`你的平均配速为 ${p.label}。`);
 
@@ -87,7 +87,7 @@ function realtimeAdvice(ctx){
   const fmt = (minPerKm)=>{
     if (!minPerKm) return '-';
     const m = Math.floor(minPerKm); const s = Math.round((minPerKm - m) * 60);
-    return `${m}:${s.toString().padStart(2,'0')}/km`;
+    return `${m}分${s.toString().padStart(2,'0')}秒/公里`;
   };
 
   if (!d || !t) return '';
@@ -116,7 +116,7 @@ function respondToMessage(message, run) {
     let p = paceFromDistanceAndDuration(toNum(run.distance), toNum(run.duration));
     if (!p && run && toNum(run.avgPaceMinPerKm)){
       const v = toNum(run.avgPaceMinPerKm); const min = Math.floor(v); const sec = Math.round((v-min)*60);
-      p = { paceMinPerKm: v, label: `${min}:${sec.toString().padStart(2,'0')}/km` };
+      p = { paceMinPerKm: v, label: `${min}分${sec.toString().padStart(2,'0')}秒/公里` };
     }
     return p ? `你的平均配速为 ${p.label}。${attachTopTip(tips)}`
              : `需要提供距离与时长，或开始实时跑步以计算配速。${attachTopTip(tips)}`;
