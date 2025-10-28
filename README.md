@@ -8,7 +8,7 @@ An AI companion who can chat with you while you are running and analyse your run
 1) Open the app
 - Option A: Double‑click `index.html` to open it in your browser.
 - Option B (recommended): Serve locally to avoid browser security limits.
-  - Python: `python3 -m http.server` then visit `http://localhost:8000`
+- Python: `python3 -m http.server` then visit `http://localhost:8000`
 
 2) Start a run (realtime tracking)
 - Choose mode: Free Run or Destination Run.
@@ -38,6 +38,28 @@ An AI companion who can chat with you while you are running and analyse your run
 - Weather, geocoding, and routing use public services from the browser: Open‑Meteo (weather), Nominatim (place search), OSRM (walking routes). If these are blocked or rate‑limited, the app will continue without them.
 - Your run inputs are saved in `localStorage` only. Use "Clear" to reset.
 - Health disclaimer: Tips are educational and not medical advice.
+
+## Android App (Native)
+
+An Android app mirroring the web features (GPS tracking, map, destination routing, chat, voice) is scaffolded under `android/`.
+
+Quick start
+- Open `android/` in Android Studio (Giraffe+ recommended).
+- Set your Google Maps API key in `android/app/src/main/AndroidManifest.xml` at `com.google.android.geo.API_KEY`.
+- Build and run on a device with GPS and microphone permissions.
+
+Features
+- Live GPS tracking with instant/average pace, distance, elapsed time.
+- Modes: Free run and Destination run. Search destination via Nominatim or enter `lat,lng`.
+- Map view: current marker, recorded route polyline (blue), planned route (green via OSRM foot routing).
+- Kilometer encouragement and short real‑time cues.
+- Chat coach: local rule‑based tips; optional OpenAI‑compatible chat completion (configure API Base/Model/Key in the header toggles).
+- Voice coach (TTS) and speech input (Android SpeechRecognizer).
+
+Notes
+- The app uses public endpoints for geocoding (Nominatim) and routing (OSRM). For production, consider your own proxies and rate limits.
+- For LLM, set an OpenAI‑compatible base (e.g., `https://api.openai.com/v1` or local servers like Ollama/LM Studio) and a model name.
+
 
 ## Troubleshooting
 - No mic input option: Your browser may not support the Web Speech API; you can still chat via text.
