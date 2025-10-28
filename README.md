@@ -13,6 +13,7 @@ An AI companion who can chat with you while you are running and analyse your run
 2) Start a run (realtime tracking)
 - Choose mode: Free Run or Destination Run.
 - Optional destination: enter a name or coordinates like `31.23,121.47`. If coordinates are provided, the app shows distance to destination.
+- A live map displays your route and current position. Click on the map to set the destination to the clicked coordinates.
 - Enter gender and age.
 - Click "Start" to begin. The app will track your position, instantaneous pace (min/km), average pace, distance, and time. Voice can announce metrics and remaining distance.
 
@@ -81,6 +82,7 @@ Notes
 2）开始跑步（实时）
 - 选择模式：自由跑 或 目的地跑。
 - 目的地：可填写名称，或以“纬度,经度”形式（如 `31.23,121.47`）。若提供经纬度，将显示与目的地的距离并加入语音播报。
+- 地图会实时展示路线与当前位置。可直接点击地图设置目的地坐标。
 - 输入性别与年龄。
 - 点击「开始跑步」。应用会实时记录位置、即时配速（分/公里）、平均配速、已跑距离与用时；支持语音播报与教练提醒。
 

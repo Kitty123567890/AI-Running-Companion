@@ -16,6 +16,7 @@
   const startRunBtn = document.getElementById('startRun');
   const stopRunBtn = document.getElementById('stopRun');
   const destField = document.getElementById('destField');
+  const mapEl = document.getElementById('map');
 
   // Metrics display elements
   const statusText = document.getElementById('statusText');
@@ -45,7 +46,121 @@
     startTime: null,
     totalDistanceKm: 0,
     lastCoachAt: 0,
+    // map state
+    map: null,
+    routeLine: null,
+    posMarker: null,
+    destMarker: null,
+    startMarker: null,
   };
+
+  // Map helpers
+  function initMapIfNeeded() {
+    if (!mapEl || state.map || typeof L === 'undefined') return;
+    const m = L.map(mapEl, { zoomControl: true });
+    // Default view prior to GPS lock
+    m.setView([31.2304, 121.4737], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(m);
+    state.routeLine = L.polyline([], { color: '#47a3ff', weight: 4 }).addTo(m);
+    // Clicking the map sets destination
+    m.on('click', (e) => {
+      const { lat, lng } = e.latlng;
+      setDestinationFromMap(lat, lng);
+    });
+    // Simple control: Recenter and Fit
+    const Buttons = L.Control.extend({
+      position: 'topleft',
+      onAdd: function () {
+        const div = L.DomUtil.create('div', 'leaflet-bar');
+        const rec = L.DomUtil.create('a', '', div);
+        rec.href = '#'; rec.title = '居中到当前位置'; rec.textContent = '居中';
+        L.DomEvent.on(rec, 'click', function (e) { L.DomEvent.stop(e); recenterOnRunner(); });
+        const fit = L.DomUtil.create('a', '', div);
+        fit.href = '#'; fit.title = '全览路线'; fit.textContent = '全览';
+        L.DomEvent.on(fit, 'click', function (e) { L.DomEvent.stop(e); fitToRoute(); });
+        return div;
+      }
+    });
+    new Buttons().addTo(m);
+    state.map = m;
+    // Restore destination marker if any
+    if (state.run && isFinite(state.run?.destLat) && isFinite(state.run?.destLng)) {
+      updateDestMarker(state.run.destLat, state.run.destLng, state.run.destLabel || '目的地');
+    }
+  }
+
+  function updateRouteOnMap(point) {
+    if (!state.map || !state.routeLine) return;
+    state.routeLine.addLatLng([point.lat, point.lng]);
+    if (!state.startMarker) {
+      state.startMarker = L.marker([point.lat, point.lng], { title: '起点' }).addTo(state.map);
+    }
+    if (!state.posMarker) {
+      state.posMarker = L.marker([point.lat, point.lng], { title: '当前位置' }).addTo(state.map);
+    } else {
+      state.posMarker.setLatLng([point.lat, point.lng]);
+    }
+    // Follow user when running
+    state.map.setView([point.lat, point.lng], Math.max(state.map.getZoom(), 15));
+  }
+
+  function clearRouteOnMap() {
+    if (state.routeLine) state.routeLine.setLatLngs([]);
+    if (state.posMarker && state.map) { try { state.map.removeLayer(state.posMarker); } catch {} state.posMarker = null; }
+    if (state.startMarker && state.map) { try { state.map.removeLayer(state.startMarker); } catch {} state.startMarker = null; }
+  }
+
+  function updateDestMarker(lat, lng, label) {
+    if (!state.map || typeof L === 'undefined') return;
+    if (!state.destMarker) {
+      state.destMarker = L.marker([lat, lng], { title: label || '目的地' }).addTo(state.map);
+    } else {
+      state.destMarker.setLatLng([lat, lng]);
+    }
+    if (label) { try { state.destMarker.bindPopup(label); } catch {} }
+  }
+
+  function removeDestMarker() {
+    if (state.destMarker && state.map) { try { state.map.removeLayer(state.destMarker); } catch {} }
+    state.destMarker = null;
+  }
+
+  function setDestinationFromMap(lat, lng) {
+    // Switch to destination mode
+    const radios = runForm.querySelectorAll('input[name="mode"]');
+    radios.forEach(r => { r.checked = (r.value === 'dest'); });
+    destField.style.display = '';
+    // Fill input field
+    const destInput = document.getElementById('destination');
+    if (destInput) destInput.value = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    // Update state
+    state.run.mode = 'dest';
+    state.run.destination = `${lat},${lng}`;
+    state.run.destLabel = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    state.run.destLat = lat; state.run.destLng = lng;
+    saveRunToStorage();
+    updateUi();
+    updateDestMarker(lat, lng, state.run.destLabel);
+    addMsg('assistant', `已将目的地设置为地图坐标：${state.run.destLabel}`);
+  }
+
+  function fitToRoute() {
+    if (!state.map || !state.routeLine) return;
+    const b = state.routeLine.getBounds();
+    if (b && b.isValid && b.isValid()) {
+      state.map.fitBounds(b, { padding: [30, 30] });
+    } else if (state.posMarker) {
+      recenterOnRunner();
+    }
+  }
+
+  function recenterOnRunner() {
+    if (!state.map || !state.posMarker) return;
+    const ll = state.posMarker.getLatLng();
+    state.map.setView(ll, Math.max(state.map.getZoom(), 16));
+  }
 
   function loadRunFromStorage() {
     try { return JSON.parse(localStorage.getItem('run') || '{}'); } catch { return {}; }
@@ -194,10 +309,14 @@
     const elapsedMin = state.startTime ? (Date.now() - state.startTime) / 60000 : 0;
     state.run.avgPaceMinPerKm = (state.totalDistanceKm > 0) ? (elapsedMin / state.totalDistanceKm) : null;
     updateUi();
+    // Update map
+    initMapIfNeeded();
+    updateRouteOnMap(point);
     maybeCoachRealtime();
   }
 
   function startWatching(){
+    initMapIfNeeded();
     if (!('geolocation' in navigator)){
       addMsg('assistant','当前设备不支持地理定位。');
       speak('当前设备不支持地理定位');
@@ -208,6 +327,8 @@
     state.track = [];
     state.totalDistanceKm = 0;
     state.startTime = Date.now();
+    // fresh route visuals
+    clearRouteOnMap();
     startRunBtn.disabled = true;
     stopRunBtn.disabled = false;
     updateUi();
@@ -236,6 +357,8 @@
     startRunBtn.disabled = false;
     stopRunBtn.disabled = true;
     updateUi();
+    // Show full route on finish
+    fitToRoute();
     const tips = window.LocalCoach.analyzeRun({...state.run, distance: state.totalDistanceKm, duration: Math.round((Date.now()-state.startTime)/60000)});
     if (tips.length){ addMsg('assistant', `本次结束。${tips[0]}`); speak(tips[0]); }
   }
@@ -376,6 +499,13 @@
     state.run.age = (fd.get('age')||'').toString();
     saveRunToStorage();
     updateUi();
+    // Map destination marker update
+    initMapIfNeeded();
+    if (mode === 'dest' && parsedDest.lat != null && parsedDest.lng != null) {
+      updateDestMarker(parsedDest.lat, parsedDest.lng, parsedDest.label || '目的地');
+    } else {
+      removeDestMarker();
+    }
   });
   startRunBtn.addEventListener('click', startWatching);
   stopRunBtn.addEventListener('click', stopWatching);
@@ -393,6 +523,7 @@
     startRunBtn.disabled = false;
     stopRunBtn.disabled = true;
     updateUi();
+    clearRouteOnMap();
     addMsg('assistant', '已清空本次跑步记录。');
   });
 
@@ -419,6 +550,7 @@
 
   // Initial prompts / UI
   updateUi();
+  initMapIfNeeded();
   addMsg('assistant', '你好！点击“开始跑步”后，我将实时播报当前位置、即时/平均配速，并在目的地模式下提示剩余距离。也可随时向我发问。');
 
   // Save LLM cfg (key not stored)

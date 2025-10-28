@@ -92,3 +92,9 @@ button#clearRun, button#clearChat {
 
 .tip { color: var(--accent-2); }
 .warn { color: var(--danger); }
+
+/* Map */
+.map-wrap { margin-top: 12px; }
+.map-hint { display: block; margin-top: 6px; color: var(--muted); }
+.map { width: 100%; height: 360px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+.leaflet-container { background: #0b1117; }
