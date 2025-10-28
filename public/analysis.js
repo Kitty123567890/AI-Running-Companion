@@ -32,11 +32,17 @@ function analyzeRun(run) {
   const age = toNum(run.age);
   const maxHr = estimateMaxHr(age);
   const avgHr = toNum(run.avgHr);
-  const distanceKm = toNum(run.distance);
-  const durationMin = toNum(run.duration);
+  // Support legacy fields (distance/duration) and realtime metrics
+  const distanceKm = toNum(run.distance) || toNum(run.distanceKm) || toNum(run.totalDistanceKm);
+  const durationMin = toNum(run.duration) || (toNum(run.elapsedSec) ? toNum(run.elapsedSec)/60 : null);
   const notes = (run.notes || "").toLowerCase();
 
-  const p = paceFromDistanceAndDuration(distanceKm, durationMin);
+  let p = paceFromDistanceAndDuration(distanceKm, durationMin);
+  if (!p && run.avgPaceMinPerKm) {
+    const min = Math.floor(run.avgPaceMinPerKm);
+    const sec = Math.round((run.avgPaceMinPerKm - min) * 60);
+    p = { paceMinPerKm: run.avgPaceMinPerKm, label: `${min}:${sec.toString().padStart(2, "0")}/km` };
+  }
   if (p) recs.push(`你的平均配速为 ${p.label}。`);
 
   if (avgHr) {
@@ -64,11 +70,41 @@ function analyzeRun(run) {
   if (p && p.paceMinPerKm <= 4.5) recs.push("强度较快。结束后优先做好放松与轻度拉伸。");
   if (p && p.paceMinPerKm >= 7.5) recs.push("今天配速较轻松——非常适合恢复日，保持可对话强度。");
 
-  if (!distanceKm && !durationMin && !avgHr) {
+  if (!distanceKm && !durationMin && !avgHr && !run.avgPaceMinPerKm) {
     recs.push("添加距离、时长或心率以获得个性化建议。");
   }
 
   return recs;
+}
+
+function realtimeAdvice(ctx){
+  const d = toNum(ctx.distanceKm);
+  const ip = toNum(ctx.instPaceMinPerKm);
+  const ap = toNum(ctx.avgPaceMinPerKm);
+  const t = toNum(ctx.elapsedSec);
+  const toDest = toNum(ctx.toDestKm);
+
+  const fmt = (minPerKm)=>{
+    if (!minPerKm) return '-';
+    const m = Math.floor(minPerKm); const s = Math.round((minPerKm - m) * 60);
+    return `${m}:${s.toString().padStart(2,'0')}/km`;
+  };
+
+  if (!d || !t) return '';
+
+  const parts = [];
+  if (ip) parts.push(`即时 ${fmt(ip)}`);
+  if (ap) parts.push(`平均 ${fmt(ap)}`);
+  if (toDest && ctx.mode === 'dest') parts.push(`距目的地约 ${toDest.toFixed(2)} 公里`);
+
+  // Simple coaching cues
+  if (ip && ap) {
+    const delta = ip - ap; // min/km: positive means slower than avg
+    if (delta <= -0.2) parts.push('配速略快，注意放松上身。');
+    else if (delta >= 0.3) parts.push('配速偏慢，可小幅提高步频。');
+    else parts.push('节奏稳定，保持呼吸顺畅。');
+  }
+  return parts.join('，');
 }
 
 function respondToMessage(message, run) {
@@ -77,9 +113,13 @@ function respondToMessage(message, run) {
 
   // Quick intents
   if (/配速|pace/.test(m)) {
-    const p = paceFromDistanceAndDuration(toNum(run.distance), toNum(run.duration));
+    let p = paceFromDistanceAndDuration(toNum(run.distance), toNum(run.duration));
+    if (!p && run && toNum(run.avgPaceMinPerKm)){
+      const v = toNum(run.avgPaceMinPerKm); const min = Math.floor(v); const sec = Math.round((v-min)*60);
+      p = { paceMinPerKm: v, label: `${min}:${sec.toString().padStart(2,'0')}/km` };
+    }
     return p ? `你的平均配速为 ${p.label}。${attachTopTip(tips)}`
-             : `需要提供距离与时长才能计算配速。${attachTopTip(tips)}`;
+             : `需要提供距离与时长，或开始实时跑步以计算配速。${attachTopTip(tips)}`;
   }
   if (/(心率|hr|heart).*(区间|区|rate)|心率区|zone/.test(m)) {
     const maxHr = estimateMaxHr(toNum(run.age));
@@ -125,4 +165,4 @@ function toNum(v) {
 
 function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-window.LocalCoach = { analyzeRun, respondToMessage };
+window.LocalCoach = { analyzeRun, respondToMessage, realtimeAdvice };

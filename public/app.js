@@ -13,7 +13,19 @@
 
   const runForm = document.getElementById('runForm');
   const clearRunBtn = document.getElementById('clearRun');
-  const runSummary = document.getElementById('runSummary');
+  const startRunBtn = document.getElementById('startRun');
+  const stopRunBtn = document.getElementById('stopRun');
+  const destField = document.getElementById('destField');
+
+  // Metrics display elements
+  const statusText = document.getElementById('statusText');
+  const posText = document.getElementById('posText');
+  const instPaceText = document.getElementById('instPaceText');
+  const avgPaceText = document.getElementById('avgPaceText');
+  const distText = document.getElementById('distText');
+  const timeText = document.getElementById('timeText');
+  const toDestRow = document.getElementById('toDestRow');
+  const toDestText = document.getElementById('toDestText');
 
   const voiceToggle = document.getElementById('voiceToggle');
   const useOpenAI = document.getElementById('useOpenAI');
@@ -26,7 +38,13 @@
     speaking: false,
     recognizing: false,
     recognition: null,
-    messages: []
+    messages: [],
+    running: false,
+    watchId: null,
+    track: [], // {lat,lng,timestamp}
+    startTime: null,
+    totalDistanceKm: 0,
+    lastCoachAt: 0,
   };
 
   function loadRunFromStorage() {
@@ -36,7 +54,7 @@
     localStorage.setItem('run', JSON.stringify(state.run || {}));
   }
 
-  // UI helpers
+  // Helpers
   function addMsg(role, text) {
     const el = document.createElement('div');
     el.className = `msg ${role === 'user' ? 'me' : 'coach'}`;
@@ -45,26 +63,6 @@
     el.appendChild(meta); el.appendChild(body);
     chatEl.appendChild(el);
     chatEl.scrollTop = chatEl.scrollHeight;
-  }
-
-  function renderRunSummary() {
-    const r = state.run || {};
-    const rows = [];
-    if (r.destination) rows.push(`目的地：${r.destination}`);
-    if (r.distance) rows.push(`距离：${r.distance} 公里`);
-    if (r.duration) rows.push(`时长：${r.duration} 分钟`);
-    if (r.avgHr) rows.push(`平均心率：${r.avgHr} 次/分`);
-    if (r.age) rows.push(`年龄：${r.age}`);
-    if (r.notes) rows.push(`备注：${r.notes}`);
-    if (rows.length === 0) {
-      runSummary.textContent = '还没有跑步数据。填写后可获得个性化建议。';
-    } else {
-      runSummary.innerHTML = rows.map(r => `• ${r}`).join('<br>');
-      const tips = window.LocalCoach.analyzeRun(state.run);
-      if (tips.length) {
-        runSummary.innerHTML += `<br><br><span class="tip">重点建议：</span> ${tips[0]}`;
-      }
-    }
   }
 
   function speak(text) {
@@ -102,6 +100,180 @@
     return rec;
   }
 
+  // Geo + metrics helpers
+  function haversineKm(a, b) {
+    const R = 6371;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const la1 = toRad(a.lat), la2 = toRad(b.lat);
+    const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function toRad(x){ return x * Math.PI/180; }
+  function fmtPaceMinPerKm(minPerKm){
+    if (!isFinite(minPerKm) || minPerKm <= 0) return '-';
+    const min = Math.floor(minPerKm);
+    const sec = Math.round((minPerKm - min) * 60);
+    return `${min}:${sec.toString().padStart(2,'0')}/公里`;
+  }
+  function fmtTime(sec){
+    if (!isFinite(sec) || sec < 0) return '-';
+    const h = Math.floor(sec/3600);
+    const m = Math.floor((sec%3600)/60);
+    const s = Math.floor(sec%60);
+    return h>0 ? `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}` : `${m}:${s.toString().padStart(2,'0')}`;
+  }
+
+  function parseDestInput(s){
+    const t = (s||'').trim();
+    if (!t) return { label: '', lat: null, lng: null };
+    // Try lat,lng
+    const m = t.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (m){
+      const lat = Number(m[1]); const lng = Number(m[2]);
+      if (isFinite(lat) && isFinite(lng)) return { label: `${lat},${lng}`, lat, lng };
+    }
+    return { label: t, lat: null, lng: null };
+  }
+
+  function updateUi(){
+    const running = state.running;
+    statusText.textContent = running ? '进行中' : '未开始';
+    if (state.track.length){
+      const last = state.track[state.track.length-1];
+      posText.textContent = `${last.lat.toFixed(5)}, ${last.lng.toFixed(5)}`;
+    } else {
+      posText.textContent = '-';
+    }
+    // Instant pace
+    const inst = state.run.instPaceMinPerKm;
+    instPaceText.textContent = fmtPaceMinPerKm(inst);
+    // Avg pace
+    const avg = state.run.avgPaceMinPerKm;
+    avgPaceText.textContent = fmtPaceMinPerKm(avg);
+    // Distance
+    distText.textContent = isFinite(state.totalDistanceKm) ? `${state.totalDistanceKm.toFixed(2)} 公里` : '-';
+    // Time
+    const elapsed = state.startTime ? ((Date.now() - state.startTime)/1000) : 0;
+    timeText.textContent = fmtTime(elapsed);
+    // To destination
+    if (state.run.mode === 'dest' && state.run.destLat != null && state.run.destLng != null && state.track.length){
+      const last = state.track[state.track.length-1];
+      const toKm = haversineKm({lat:last.lat,lng:last.lng},{lat:state.run.destLat,lng:state.run.destLng});
+      toDestRow.style.display = '';
+      toDestText.textContent = `${toKm.toFixed(2)} 公里`;
+      state.run.toDestKm = toKm;
+    } else {
+      toDestRow.style.display = 'none';
+      toDestText.textContent = '-';
+      state.run.toDestKm = null;
+    }
+  }
+
+  function handlePosition(pos){
+    const { latitude: lat, longitude: lng, speed } = pos.coords;
+    const ts = pos.timestamp || Date.now();
+    const point = { lat, lng, ts };
+    const prev = state.track[state.track.length - 1];
+    state.track.push(point);
+    if (prev){
+      const d = haversineKm(prev, point);
+      state.totalDistanceKm += d;
+    }
+    // Instant pace: prefer native speed m/s if valid, else derive from last segment
+    let mPerKm = null;
+    if (speed != null && isFinite(speed) && speed > 0){
+      const minPerKm = (1000 / speed) / 60; // speed m/s
+      mPerKm = minPerKm;
+    } else if (prev) {
+      const dt = (point.ts - prev.ts)/1000; // s
+      const dk = haversineKm(prev, point);
+      if (dt > 0 && dk > 0) mPerKm = (dt/60) / dk;
+    }
+    state.run.instPaceMinPerKm = mPerKm;
+    const elapsedMin = state.startTime ? (Date.now() - state.startTime) / 60000 : 0;
+    state.run.avgPaceMinPerKm = (state.totalDistanceKm > 0) ? (elapsedMin / state.totalDistanceKm) : null;
+    updateUi();
+    maybeCoachRealtime();
+  }
+
+  function startWatching(){
+    if (!('geolocation' in navigator)){
+      addMsg('assistant','当前设备不支持地理定位。');
+      speak('当前设备不支持地理定位');
+      return;
+    }
+    if (state.running) return;
+    state.running = true;
+    state.track = [];
+    state.totalDistanceKm = 0;
+    state.startTime = Date.now();
+    startRunBtn.disabled = true;
+    stopRunBtn.disabled = false;
+    updateUi();
+    try {
+      state.watchId = navigator.geolocation.watchPosition(
+        handlePosition,
+        (err)=>{
+          addMsg('assistant', `定位失败：${err.message}`);
+          speak('定位失败');
+        },
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+      );
+      addMsg('assistant','已开始跑步。定位初始化中……');
+      speak('已开始跑步，定位初始化中');
+    } catch(e){
+      addMsg('assistant','无法开始定位。');
+    }
+  }
+
+  function stopWatching(){
+    if (state.watchId != null){
+      try { navigator.geolocation.clearWatch(state.watchId); } catch {}
+      state.watchId = null;
+    }
+    state.running = false;
+    startRunBtn.disabled = false;
+    stopRunBtn.disabled = true;
+    updateUi();
+    const tips = window.LocalCoach.analyzeRun({...state.run, distance: state.totalDistanceKm, duration: Math.round((Date.now()-state.startTime)/60000)});
+    if (tips.length){ addMsg('assistant', `本次结束。${tips[0]}`); speak(tips[0]); }
+  }
+
+  async function maybeCoachRealtime(){
+    const now = Date.now();
+    // Speak at most once every 30s, and only after we have at least 200m and 60s
+    const elapsedSec = state.startTime ? (now - state.startTime)/1000 : 0;
+    if (elapsedSec < 60 || state.totalDistanceKm < 0.2) return;
+    if (now - state.lastCoachAt < 30000) return;
+    state.lastCoachAt = now;
+    const context = {
+      mode: state.run.mode,
+      instPaceMinPerKm: state.run.instPaceMinPerKm,
+      avgPaceMinPerKm: state.run.avgPaceMinPerKm,
+      distanceKm: state.totalDistanceKm,
+      elapsedSec,
+      toDestKm: state.run.toDestKm,
+      destLabel: state.run.destLabel || state.run.destination,
+    };
+    let advice = '';
+    // Prefer cloud LLM if配置开启
+    const base = (openaiBaseInput?.value || '').trim();
+    const model = (modelNameInput?.value || '').trim();
+    const key = (openaiKeyInput?.value || '').trim();
+    const useCloud = useOpenAI.checked && (key || base);
+    if (useCloud){
+      try {
+        const sys = '你是中文跑步教练。基于给定的实时数据，用1句话给出具体可执行的建议。避免客套，直达主题。';
+        const user = `数据: ${JSON.stringify(context)}`;
+        const msg = await fetchOpenAI({ userText: user, run: state.run, apiKey: key, apiBase: base, model });
+        advice = msg || '';
+      } catch(e){ advice = ''; }
+    }
+    if (!advice) advice = window.LocalCoach.realtimeAdvice(context);
+    if (advice){ addMsg('assistant', advice); speak(advice); }
+  }
+
   async function coachReply(userText) {
     const base = (openaiBaseInput?.value || '').trim();
     const model = (modelNameInput?.value || '').trim();
@@ -131,8 +303,17 @@
 
   async function fetchOpenAI({ userText, run, apiKey, apiBase, model }) {
     // 注意：浏览器中使用 API Key 存在泄露风险，生产环境请走后端代理。
-    const sys = `你是一名专业的跑步教练。请结合用户的跑步数据（目的地、距离km、时长min、平均心率bpm、年龄和备注）给出简洁、具体、可执行的中文建议，语气支持且不夸张。单次回复不超过120字。`;
-    const ctx = `跑步数据 JSON：${JSON.stringify(run)}`;
+    const sys = `你是一名专业的跑步教练。你可以结合用户的实时跑步数据（位置、即时配速、平均配速、已跑距离、与目的地距离、年龄/性别）提供中文建议，不必等待用户提问。每次建议不超过120字，务求具体可执行。`;
+    const ctx = `实时跑步数据 JSON：${JSON.stringify({
+      mode: state.run.mode,
+      instPaceMinPerKm: state.run.instPaceMinPerKm,
+      avgPaceMinPerKm: state.run.avgPaceMinPerKm,
+      distanceKm: state.totalDistanceKm,
+      toDestKm: state.run.toDestKm,
+      age: state.run.age,
+      gender: state.run.gender,
+      destLabel: state.run.destLabel || state.run.destination
+    })}`;
     const messages = [
       { role: 'system', content: sys },
       { role: 'user', content: `${ctx}\n\n用户：${userText}` }
@@ -161,7 +342,7 @@
     return `${b}${p}`;
   }
 
-  // 事件绑定
+  // Events: chat
   chatForm.addEventListener('submit', (e) => { e.preventDefault(); submitMessage(); });
   micBtn.addEventListener('click', () => {
     if (!state.recognition) state.recognition = initRecognition();
@@ -177,47 +358,58 @@
   });
   clearChatBtn.addEventListener('click', () => { chatEl.innerHTML = ''; });
 
-  runForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+  // Events: running controls & form
+  runForm.addEventListener('change', (e)=>{
+    // Mode toggle show/hide destination field
     const fd = new FormData(runForm);
-    state.run = {
-      destination: (fd.get('destination') || '').toString().trim(),
-      distance: (fd.get('distance') || '').toString().trim(),
-      duration: (fd.get('duration') || '').toString().trim(),
-      avgHr: (fd.get('avgHr') || '').toString().trim(),
-      age: (fd.get('age') || '').toString().trim(),
-      notes: (fd.get('notes') || '').toString().trim(),
-    };
+    const mode = (fd.get('mode')||'free').toString();
+    destField.style.display = mode === 'dest' ? '' : 'none';
+    // Persist gender/age, mode, destination
+    const destRaw = (fd.get('destination')||'').toString();
+    const parsedDest = parseDestInput(destRaw);
+    state.run.mode = mode;
+    state.run.destination = destRaw;
+    state.run.destLabel = parsedDest.label;
+    state.run.destLat = parsedDest.lat;
+    state.run.destLng = parsedDest.lng;
+    state.run.gender = (fd.get('gender')||'').toString();
+    state.run.age = (fd.get('age')||'').toString();
     saveRunToStorage();
-    renderRunSummary();
-    const tips = window.LocalCoach.analyzeRun(state.run);
-    if (tips.length) {
-      addMsg('assistant', `已更新你的跑步记录。${tips[0]}`);
-      speak(tips[0]);
-    } else {
-      addMsg('assistant', '已更新跑步数据。添加距离/时长/心率可获得更具体的建议。');
-    }
+    updateUi();
   });
+  startRunBtn.addEventListener('click', startWatching);
+  stopRunBtn.addEventListener('click', stopWatching);
 
   clearRunBtn.addEventListener('click', () => {
-    state.run = {};
-    saveRunToStorage();
-    runForm.reset();
-    renderRunSummary();
-    addMsg('assistant', '已清空跑步数据。');
+    // Only clear session metrics; keep age/gender/mode/destination
+    state.track = [];
+    state.totalDistanceKm = 0;
+    state.startTime = null;
+    state.run.instPaceMinPerKm = null;
+    state.run.avgPaceMinPerKm = null;
+    if (state.watchId != null) { try { navigator.geolocation.clearWatch(state.watchId); } catch {} }
+    state.watchId = null;
+    state.running = false;
+    startRunBtn.disabled = false;
+    stopRunBtn.disabled = true;
+    updateUi();
+    addMsg('assistant', '已清空本次跑步记录。');
   });
 
-  // 表单预填
+  // Prefill from storage
   (function prefill() {
     const r = state.run || {};
     const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
-    set('destination', r.destination);
-    set('distance', r.distance);
-    set('duration', r.duration);
-    set('avgHr', r.avgHr);
-    set('age', r.age);
-    set('notes', r.notes);
-    // 从 localStorage 读取 LLM 配置
+    // gender/age/destination and mode
+    set('gender', r.gender || '');
+    set('age', r.age || '');
+    set('destination', r.destination || '');
+    // mode radios
+    const mode = r.mode || 'free';
+    const radios = runForm.querySelectorAll('input[name="mode"]');
+    radios.forEach(radio => { radio.checked = (radio.value === mode); });
+    destField.style.display = mode === 'dest' ? '' : 'none';
+    // LLM cfg
     try {
       const cfg = JSON.parse(localStorage.getItem('llmCfg') || '{}');
       if (cfg.apiBase) set('openaiBase', cfg.apiBase);
@@ -225,11 +417,11 @@
     } catch {}
   })();
 
-  // 初始提示
-  renderRunSummary();
-  addMsg('assistant', '你好！我是你的 AI 跑步教练。填写跑步数据后，随时可以向我询问配速、心率、补水补给或训练建议。');
+  // Initial prompts / UI
+  updateUi();
+  addMsg('assistant', '你好！点击“开始跑步”后，我将实时播报当前位置、即时/平均配速，并在目的地模式下提示剩余距离。也可随时向我发问。');
 
-  // 保存 LLM 配置（不默认保存密钥）
+  // Save LLM cfg (key not stored)
   function saveCfg() {
     const cfg = {
       apiBase: (openaiBaseInput?.value || '').trim(),

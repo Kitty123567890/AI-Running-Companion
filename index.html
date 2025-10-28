@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -26,38 +26,46 @@
 
     <main class="app">
       <section class="panel run-panel">
-        <h2>跑步数据</h2>
+        <h2>跑步</h2>
         <form id="runForm" class="run-form">
           <div class="field">
+            <label>模式</label>
+            <label class="toggle"><input type="radio" name="mode" value="free" checked /> 自由跑</label>
+            <label class="toggle"><input type="radio" name="mode" value="dest" /> 目的地跑</label>
+          </div>
+          <div class="field" id="destField" style="display:none">
             <label for="destination">目的地</label>
-            <input id="destination" name="destination" type="text" placeholder="例如：中央公园环线" />
+            <input id="destination" name="destination" type="text" placeholder="名称或经纬度（如 31.23,121.47）" />
+            <small>提示：若填写“纬度,经度”，可计算与目的地的距离；否则仅作为标签显示。</small>
           </div>
           <div class="field">
-            <label for="distance">距离（公里）</label>
-            <input id="distance" name="distance" type="number" min="0" step="0.1" placeholder="例如：5" />
+            <label for="gender">性别</label>
+            <select id="gender" name="gender">
+              <option value="">未选择</option>
+              <option value="male">男</option>
+              <option value="female">女</option>
+              <option value="other">其他</option>
+            </select>
           </div>
           <div class="field">
-            <label for="duration">时长（分钟）</label>
-            <input id="duration" name="duration" type="number" min="0" step="1" placeholder="例如：30" />
-          </div>
-          <div class="field">
-            <label for="avgHr">平均心率（次/分）</label>
-            <input id="avgHr" name="avgHr" type="number" min="0" step="1" placeholder="例如：150" />
-          </div>
-          <div class="field">
-            <label for="age">年龄（可选）</label>
+            <label for="age">年龄</label>
             <input id="age" name="age" type="number" min="0" step="1" placeholder="例如：35" />
           </div>
-          <div class="field">
-            <label for="notes">备注</label>
-            <input id="notes" name="notes" type="text" placeholder="例如：爬坡、炎热、间歇等情况" />
-          </div>
           <div class="actions">
-            <button type="submit">保存/更新</button>
+            <button type="button" id="startRun">开始跑步</button>
+            <button type="button" id="stopRun" disabled>停止</button>
             <button type="button" id="clearRun">清空</button>
           </div>
         </form>
-        <div id="runSummary" class="run-summary"></div>
+        <div id="runSummary" class="run-summary">
+          <div><strong>当前状态：</strong><span id="statusText">未开始</span></div>
+          <div><strong>当前位置：</strong><span id="posText">-</span></div>
+          <div><strong>即时配速：</strong><span id="instPaceText">-</span></div>
+          <div><strong>平均配速：</strong><span id="avgPaceText">-</span></div>
+          <div><strong>已跑距离：</strong><span id="distText">-</span></div>
+          <div><strong>用时：</strong><span id="timeText">-</span></div>
+          <div id="toDestRow" style="display:none"><strong>距离目的地：</strong><span id="toDestText">-</span></div>
+        </div>
       </section>
 
       <section class="panel chat-panel">

@@ -10,10 +10,11 @@ An AI companion who can chat with you while you are running and analyse your run
 - Option B (recommended): Serve locally to avoid browser security limits.
   - Python: `python3 -m http.server` then visit `http://localhost:8000`
 
-2) Enter your run details
-- Fill in destination, distance (km), duration (min), average heart rate (bpm), age (optional), and notes.
-- Click "Save/Update". The app stores your inputs in localStorage so they persist between visits.
-- The panel shows a quick summary and a top tip based on your data.
+2) Start a run (realtime tracking)
+- Choose mode: Free Run or Destination Run.
+- Optional destination: enter a name or coordinates like `31.23,121.47`. If coordinates are provided, the app shows distance to destination.
+- Enter gender and age.
+- Click "Start" to begin. The app will track your position, instantaneous pace (min/km), average pace, distance, and time. Voice can announce metrics and remaining distance.
 
 3) Chat with the coach
 - Type a message and press Enter or click "Send".
@@ -77,10 +78,11 @@ Notes
 - 方式 B（推荐）：本地启动静态服务器，避免浏览器的本地文件安全限制。
   - Python：`python3 -m http.server`，然后访问 `http://localhost:8000`
 
-2）填写跑步数据
-- 填写目的地、距离（公里）、时长（分钟）、平均心率（次/分）、年龄（可选）和备注。
-- 点击「保存/更新」。应用会将数据保存到浏览器的 localStorage，刷新页面仍会保留。
-- 面板会展示简要汇总和一条重点建议。
+2）开始跑步（实时）
+- 选择模式：自由跑 或 目的地跑。
+- 目的地：可填写名称，或以“纬度,经度”形式（如 `31.23,121.47`）。若提供经纬度，将显示与目的地的距离并加入语音播报。
+- 输入性别与年龄。
+- 点击「开始跑步」。应用会实时记录位置、即时配速（分/公里）、平均配速、已跑距离与用时；支持语音播报与教练提醒。
 
 3）与教练聊天
 - 在输入框输入问题后回车或点击「发送」。
