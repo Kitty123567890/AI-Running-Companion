@@ -61,82 +61,110 @@
     lastKmAtDist: 0,
   };
 
-  // Map helpers
+  // Map helpers (AMap)
+  const isFiniteNum = (v) => Number.isFinite(v);
   function initMapIfNeeded() {
-    if (!mapEl || state.map || typeof L === 'undefined') return;
-    const m = L.map(mapEl, { zoomControl: true });
-    // Default view prior to GPS lock
-    m.setView([31.2304, 121.4737], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(m);
-    state.routeLine = L.polyline([], { color: '#47a3ff', weight: 4 }).addTo(m);
+    if (!mapEl || state.map || typeof AMap === 'undefined') return;
+    const m = new AMap.Map(mapEl, {
+      zoom: 14,
+      center: [116.397428, 39.90923], // Default Tiananmen Square, Beijing
+      viewMode: '3D'
+    });
+    // Main running track polyline
+    state.routeLine = new AMap.Polyline({
+      path: [],
+      strokeColor: '#47a3ff',
+      strokeWeight: 4
+    });
+    m.add(state.routeLine);
     // Clicking the map sets destination
     m.on('click', (e) => {
-      const { lat, lng } = e.latlng;
-      setDestinationFromMap(lat, lng);
+      const { lng, lat } = e.lnglat || {};
+      if (isFiniteNum(lat) && isFiniteNum(lng)) setDestinationFromMap(lat, lng);
     });
-    // Simple control: Recenter and Fit
-    const Buttons = L.Control.extend({
-      position: 'topleft',
-      onAdd: function () {
-        const div = L.DomUtil.create('div', 'leaflet-bar');
-        const rec = L.DomUtil.create('a', '', div);
-        rec.href = '#'; rec.title = '居中到当前位置'; rec.textContent = '居中';
-        L.DomEvent.on(rec, 'click', function (e) { L.DomEvent.stop(e); recenterOnRunner(); });
-        const fit = L.DomUtil.create('a', '', div);
-        fit.href = '#'; fit.title = '全览路线'; fit.textContent = '全览';
-        L.DomEvent.on(fit, 'click', function (e) { L.DomEvent.stop(e); fitToRoute(); });
-        return div;
-      }
-    });
-    new Buttons().addTo(m);
+    // Simple inline controls: Recenter and Fit
+    const ctr = document.createElement('div');
+    ctr.style.position = 'absolute';
+    ctr.style.top = '10px';
+    ctr.style.left = '10px';
+    ctr.style.background = 'rgba(255,255,255,0.9)';
+    ctr.style.borderRadius = '4px';
+    ctr.style.boxShadow = '0 1px 4px rgba(0,0,0,0.2)';
+    ctr.style.display = 'flex';
+    ctr.style.gap = '6px';
+    ctr.style.padding = '6px';
+    const btn = (txt, title, onClick) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = txt;
+      b.title = title;
+      b.style.cursor = 'pointer';
+      b.style.padding = '4px 8px';
+      b.style.border = '1px solid #ccc';
+      b.style.borderRadius = '3px';
+      b.style.background = '#fff';
+      b.addEventListener('click', (e) => { e.preventDefault(); onClick && onClick(); });
+      return b;
+    };
+    ctr.appendChild(btn('居中', '居中到当前位置', () => recenterOnRunner()));
+    ctr.appendChild(btn('全览', '全览路线', () => fitToRoute()));
+    // AMap container is a div; we can append our control into mapEl
+    mapEl.style.position = mapEl.style.position || 'relative';
+    mapEl.appendChild(ctr);
     state.map = m;
     // Restore destination marker if any
-    if (state.run && isFinite(state.run?.destLat) && isFinite(state.run?.destLng)) {
+    if (state.run && isFiniteNum(state.run?.destLat) && isFiniteNum(state.run?.destLng)) {
       updateDestMarker(state.run.destLat, state.run.destLng, state.run.destLabel || '目的地');
     }
   }
 
   function updateRouteOnMap(point) {
     if (!state.map || !state.routeLine) return;
-    state.routeLine.addLatLng([point.lat, point.lng]);
+    const path = state.routeLine.getPath() || [];
+    path.push(new AMap.LngLat(point.lng, point.lat));
+    state.routeLine.setPath(path);
     if (!state.startMarker) {
-      state.startMarker = L.marker([point.lat, point.lng], { title: '起点' }).addTo(state.map);
+      state.startMarker = new AMap.Marker({ position: [point.lng, point.lat], title: '起点' });
+      state.map.add(state.startMarker);
     }
     if (!state.posMarker) {
-      state.posMarker = L.marker([point.lat, point.lng], { title: '当前位置' }).addTo(state.map);
+      state.posMarker = new AMap.Marker({ position: [point.lng, point.lat], title: '当前位置' });
+      state.map.add(state.posMarker);
     } else {
-      state.posMarker.setLatLng([point.lat, point.lng]);
+      state.posMarker.setPosition([point.lng, point.lat]);
     }
     // Follow user when running
-    state.map.setView([point.lat, point.lng], Math.max(state.map.getZoom(), 15));
+    const z = state.map.getZoom();
+    const targetZ = !isFinite(z) ? 15 : Math.max(z, 15);
+    state.map.setZoomAndCenter(targetZ, [point.lng, point.lat]);
     // Plan/update route if destination exists
     maybePlanRoute();
   }
 
   function clearRouteOnMap() {
-    if (state.routeLine) state.routeLine.setLatLngs([]);
-    if (state.posMarker && state.map) { try { state.map.removeLayer(state.posMarker); } catch {} state.posMarker = null; }
-    if (state.startMarker && state.map) { try { state.map.removeLayer(state.startMarker); } catch {} state.startMarker = null; }
+    if (state.routeLine) state.routeLine.setPath([]);
+    if (state.posMarker && state.map) { try { state.map.remove(state.posMarker); } catch {} state.posMarker = null; }
+    if (state.startMarker && state.map) { try { state.map.remove(state.startMarker); } catch {} state.startMarker = null; }
   }
 
   function updateDestMarker(lat, lng, label) {
-    if (!state.map || typeof L === 'undefined') return;
+    if (!state.map || typeof AMap === 'undefined') return;
+    if (!isFiniteNum(lat) || !isFiniteNum(lng)) return;
     if (!state.destMarker) {
-      state.destMarker = L.marker([lat, lng], { title: label || '目的地' }).addTo(state.map);
+      state.destMarker = new AMap.Marker({ position: [lng, lat], title: label || '目的地', label: label ? { content: label, direction: 'top' } : undefined });
+      state.map.add(state.destMarker);
     } else {
-      state.destMarker.setLatLng([lat, lng]);
+      state.destMarker.setPosition([lng, lat]);
+      if (label) state.destMarker.setLabel({ content: label, direction: 'top' });
     }
-    if (label) { try { state.destMarker.bindPopup(label); } catch {} }
     // Try to plan route once destination is set
     maybePlanRoute();
   }
 
   function removeDestMarker() {
-    if (state.destMarker && state.map) { try { state.map.removeLayer(state.destMarker); } catch {} }
+    if (state.destMarker && state.map) { try { state.map.remove(state.destMarker); } catch {} }
     state.destMarker = null;
-    if (state.routePlanLine && state.map) { try { state.map.removeLayer(state.routePlanLine); } catch {} }
+    if (state.routePlanLine && state.map) { try { state.map.remove(state.routePlanLine); } catch {} }
     state.routePlanLine = null;
   }
 
@@ -161,9 +189,11 @@
 
   function fitToRoute() {
     if (!state.map || !state.routeLine) return;
-    const b = state.routeLine.getBounds();
-    if (b && b.isValid && b.isValid()) {
-      state.map.fitBounds(b, { padding: [30, 30] });
+    const overlays = [];
+    if (state.routeLine) overlays.push(state.routeLine);
+    if (state.routePlanLine) overlays.push(state.routePlanLine);
+    if (overlays.length) {
+      try { state.map.setFitView(overlays); } catch {}
     } else if (state.posMarker) {
       recenterOnRunner();
     }
@@ -171,12 +201,31 @@
 
   function recenterOnRunner() {
     if (!state.map || !state.posMarker) return;
-    const ll = state.posMarker.getLatLng();
-    state.map.setView(ll, Math.max(state.map.getZoom(), 16));
+    const pos = state.posMarker.getPosition();
+    const lng = typeof pos?.getLng === 'function' ? pos.getLng() : pos?.lng;
+    const lat = typeof pos?.getLat === 'function' ? pos.getLat() : pos?.lat;
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+    const z = state.map.getZoom();
+    state.map.setZoomAndCenter(Math.max(z || 16, 16), [lng, lat]);
   }
 
   function loadRunFromStorage() {
-    try { return JSON.parse(localStorage.getItem('run') || '{}'); } catch { return {}; }
+    try {
+      const r = JSON.parse(localStorage.getItem('run') || '{}') || {};
+      const numKeys = ['destLat','destLng','instPaceMinPerKm','avgPaceMinPerKm','toDestKm','distance','duration'];
+      for (const k of numKeys) {
+        if (k in r) {
+          let v = r[k];
+          if (typeof v === 'string') {
+            const s = v.trim();
+            if (s === '') { delete r[k]; continue; }
+            v = Number(s);
+          }
+          if (Number.isFinite(v)) r[k] = v; else delete r[k];
+        }
+      }
+      return r;
+    } catch { return {}; }
   }
   function saveRunToStorage() {
     localStorage.setItem('run', JSON.stringify(state.run || {}));
@@ -376,7 +425,7 @@
     // fresh route visuals
     clearRouteOnMap();
     // keep any previous planned route only when a destination is set; otherwise clear
-    if (!(state.run && isFinite(state.run?.destLat) && isFinite(state.run?.destLng))) {
+    if (!(state.run && isFiniteNum(state.run?.destLat) && isFiniteNum(state.run?.destLng))) {
       removeDestMarker();
     }
     startRunBtn.disabled = true;
@@ -456,47 +505,62 @@
   // --- Geocoding & Route planning ---
   async function geocodePlace(name){
     const q = (name||'').trim(); if (!q) return null;
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`;
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (!res.ok) throw new Error('geocode http ' + res.status);
-      const arr = await res.json();
-      if (!arr || !arr.length) return null;
-      const it = arr[0];
-      return { lat: Number(it.lat), lng: Number(it.lon), label: it.display_name };
-    } catch (e) {
-      console.warn('geocode failed', e);
-      return null;
-    }
+    if (typeof AMap === 'undefined') return null;
+    return new Promise((resolve) => {
+      AMap.plugin('AMap.Geocoder', function(){
+        try {
+          const geocoder = new AMap.Geocoder();
+          geocoder.getLocation(q, (status, result) => {
+            if (status === 'complete' && result.geocodes && result.geocodes.length) {
+              const g = result.geocodes[0];
+              const loc = g.location; // AMap.LngLat
+              resolve({ lat: loc.lat, lng: loc.lng, label: g.formattedAddress || q });
+            } else {
+              resolve(null);
+            }
+          });
+        } catch (e) { console.warn('AMap geocoder error', e); resolve(null); }
+      });
+    });
   }
 
   async function planRoute(from, to){
-    if (!from || !to || !state.map) return;
-    try {
-      const url = `https://router.project-osrm.org/route/v1/foot/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('route http ' + res.status);
-      const data = await res.json();
-      const route = data.routes && data.routes[0];
-      if (!route || !route.geometry) return;
-      const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-      if (state.routePlanLine && state.map) {
-        try { state.map.removeLayer(state.routePlanLine); } catch {}
-      }
-      state.routePlanLine = L.polyline(coords, { color: '#3cb371', weight: 4, dashArray: '6,4' }).addTo(state.map);
-      // Fit if we don't yet have much track
-      if (!state.track.length || state.track.length < 3) {
-        const group = L.featureGroup([state.routePlanLine]);
-        state.map.fitBounds(group.getBounds(), { padding: [30,30] });
-      }
-    } catch (e) {
-      console.warn('route plan failed', e);
-    }
+    if (!from || !to || !state.map || typeof AMap === 'undefined') return;
+    AMap.plugin('AMap.Walking', function(){
+      try {
+        const walking = new AMap.Walking({ policy: 0 });
+        walking.search([from.lng, from.lat], [to.lng, to.lat], (status, result) => {
+          if (status === 'complete' && result && result.routes && result.routes[0]) {
+            const steps = result.routes[0].steps || [];
+            const path = [];
+            for (const s of steps) {
+              const arr = s.path || [];
+              for (const p of arr) path.push(p);
+            }
+            if (!path.length) { console.warn('AMap walking returned empty path'); return; }
+            if (state.routePlanLine && state.map) { try { state.map.remove(state.routePlanLine); } catch {} }
+            state.routePlanLine = new AMap.Polyline({
+              path,
+              strokeColor: '#3cb371',
+              strokeWeight: 4,
+              strokeStyle: 'dashed',
+              strokeDasharray: [10, 6]
+            });
+            state.map.add(state.routePlanLine);
+            if (!state.track.length || state.track.length < 3) {
+              try { state.map.setFitView([state.routePlanLine]); } catch {}
+            }
+          } else {
+            console.warn('AMap walking failed', result);
+          }
+        });
+      } catch (e) { console.warn('AMap walking error', e); }
+    });
   }
 
   function maybePlanRoute(){
     if (!state.map) return;
-    if (state.run && isFinite(state.run?.destLat) && isFinite(state.run?.destLng)) {
+    if (state.run && isFiniteNum(state.run?.destLat) && isFiniteNum(state.run?.destLng)) {
       const last = state.track[state.track.length-1];
       if (last) {
         planRoute({ lat: last.lat, lng: last.lng }, { lat: state.run.destLat, lng: state.run.destLng });
@@ -743,6 +807,15 @@
   }
   if (openaiBaseInput) openaiBaseInput.addEventListener('change', saveCfg);
   if (modelNameInput) modelNameInput.addEventListener('change', saveCfg);
+
+  // Expose minimal app context for integrations outside this IIFE
+  try {
+    window.App = Object.assign(window.App || {}, {
+      state,
+      speak,
+      voiceToggle,
+    });
+  } catch {}
 })();
 
 
@@ -753,6 +826,10 @@
 
 // 初始化元气值系统
 const energySystem = new EnergySystem();
+
+// Helpers to access app state/speak safely from outside IIFE
+const getApp = () => (typeof window !== 'undefined' ? (window.App || null) : null);
+const getState = () => { const app = getApp(); return app ? app.state : null; };
 
 // UI元素引用
 const energyBarFill = document.getElementById('energyBarFill');
@@ -807,25 +884,29 @@ function updateEnergyUI() {
  * 集成元气值更新到现有的跑步追踪逻辑
  */
 (function integrateEnergySystem() {
-  // 保存原始的位置更新处理器
-  const originalWatchSuccess = state.handleWatchSuccess || function() {};
+  const s = getState();
+  if (!s) return; // 如果主应用尚未初始化，跳过集成（避免抛错）
+  // 保存原始的位置更新处理器（若有）
+  const originalWatchSuccess = s.handleWatchSuccess || function() {};
   
   // 包装位置更新处理器以包含元气值更新
-  state.handleWatchSuccess = function(position) {
+  s.handleWatchSuccess = function(position) {
     // 调用原始处理
     if (typeof originalWatchSuccess === 'function') {
-      originalWatchSuccess(position);
+      try { originalWatchSuccess(position); } catch {}
     }
     
     // 计算运动指标用于元气值系统
+    const nowState = getState();
+    if (!nowState) return;
     const metrics = {
-      running: state.running,
+      running: nowState.running,
       instantPace: calculateInstantaneousPace(),
       targetPace: 6.0, // 可以从用户设置获取
-      duration: state.running && state.startTime ? 
-        Math.floor((Date.now() - state.startTime) / 1000) : 0,
+      duration: nowState.running && nowState.startTime ? 
+        Math.floor((Date.now() - nowState.startTime) / 1000) : 0,
       heartRate: estimateHeartRate(), // 估算心率
-      justStopped: !state.running && state.track.length > 0
+      justStopped: !nowState.running && nowState.track.length > 0
     };
     
     // 更新元气值
@@ -837,9 +918,10 @@ function updateEnergyUI() {
   
   // 计算即时配速（基于最近的位置点）
   function calculateInstantaneousPace() {
-    if (state.track.length < 2) return Infinity;
+    const s = getState();
+    if (!s || s.track.length < 2) return Infinity;
     
-    const recentPoints = state.track.slice(-5); // 最近5个点
+    const recentPoints = s.track.slice(-5); // 最近5个点
     let totalDist = 0;
     let totalTime = 0;
     
@@ -892,24 +974,29 @@ function updateEnergyUI() {
   }
 })();
 
-// 在开始跑步时重置元气值
-const originalStartRun = startRunBtn?.onclick;
-if (startRunBtn) {
-  startRunBtn.addEventListener('click', function() {
-    energySystem.reset();
-    updateEnergyUI();
-  });
-}
+// 在开始跑步时重置元气值（全局作用域安全获取按钮引用）
+(function attachEnergyResetOnStart() {
+  try {
+    const btn = document.getElementById('startRun');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        energySystem.reset();
+        updateEnergyUI();
+      });
+    }
+  } catch {}
+})();
 
 // 定期更新元气值（即使没有新的GPS数据）
 setInterval(function() {
-  if (state.running || state.track.length > 0) {
+  const s = getState();
+  if (s && (s.running || s.track.length > 0)) {
     const metrics = {
-      running: state.running,
+      running: s.running,
       instantPace: Infinity,
-      duration: state.running && state.startTime ? 
-        Math.floor((Date.now() - state.startTime) / 1000) : 0,
-      justStopped: !state.running && state.track.length > 0
+      duration: s.running && s.startTime ? 
+        Math.floor((Date.now() - s.startTime) / 1000) : 0,
+      justStopped: !s.running && s.track.length > 0
     };
     
     energySystem.updateEnergy(metrics);
@@ -924,8 +1011,8 @@ function onKilometerCompleted(km) {
   
   // 语音鼓励
   const message = `完成第${km}公里！${energySystem.getMotivationalMessage()}`;
-  if (voiceToggle?.checked) {
-    speak(message);
+  if (getApp()?.voiceToggle?.checked && getApp()?.speak) {
+    try { getApp().speak(message); } catch {}
   }
 }
 
