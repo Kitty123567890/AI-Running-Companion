@@ -935,3 +935,147 @@ window.updateEnergyUI = updateEnergyUI;
 
 console.log('✅ 元气值和哈特心脏系统已初始化');
 
+// ========================================
+// Figma风格启动屏逻辑
+// ========================================
+
+// 获取启动屏相关元素
+const launchScreen = document.getElementById('launchScreen');
+const launchPlayBtn = document.getElementById('launchPlayBtn');
+const launchMicBtn = document.getElementById('launchMicBtn');
+const launchHeartIcon = document.getElementById('launchHeartIcon');
+const currentTimeEl = document.getElementById('currentTime');
+const energyPercentEl = document.getElementById('energyPercent');
+
+// 获取主界面元素
+const appHeader = document.getElementById('appHeader');
+const appMain = document.getElementById('appMain');
+const appFooter = document.getElementById('appFooter');
+const energyContainer = document.getElementById('energyContainer');
+
+// 更新启动屏时间显示
+function updateLaunchTime() {
+  if (!currentTimeEl) return;
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  currentTimeEl.textContent = `${hours}:${minutes}`;
+}
+
+// 更新启动屏元气值显示（显示在电量位置）
+function updateLaunchEnergy() {
+  if (!energyPercentEl || !launchHeartIcon) return;
+
+  const status = energySystem.getDetailedStatus();
+  energyPercentEl.textContent = status.percent;
+
+  // 更新启动屏心脏状态
+  launchHeartIcon.setAttribute('data-state', status.state);
+
+  // 更新启动屏心脏渐变色
+  const launchHeartGradStart = document.getElementById('launchHeartGradStart');
+  const launchHeartGradEnd = document.getElementById('launchHeartGradEnd');
+
+  if (launchHeartGradStart && launchHeartGradEnd) {
+    const gradColors = status.gradient.match(/#[0-9A-Fa-f]{6}/g);
+    if (gradColors && gradColors.length >= 2) {
+      launchHeartGradStart.style.stopColor = gradColors[0];
+      launchHeartGradEnd.style.stopColor = gradColors[1];
+    }
+  }
+}
+
+// 启动屏进入主界面
+function enterMainApp() {
+  // 添加渐隐动画
+  launchScreen.classList.add('hidden');
+
+  // 等待动画完成后隐藏启动屏
+  setTimeout(() => {
+    launchScreen.style.display = 'none';
+
+    // 显示主界面
+    appHeader.style.display = 'flex';
+    appMain.style.display = 'grid';
+    appFooter.style.display = 'block';
+    energyContainer.style.display = 'flex';
+
+    // 停止启动屏更新
+    if (launchScreenTimer) {
+      clearInterval(launchScreenTimer);
+    }
+
+    console.log('✅ 进入主界面');
+  }, 300);
+}
+
+// 播放按钮点击 - 直接开始跑步
+if (launchPlayBtn) {
+  launchPlayBtn.addEventListener('click', () => {
+    enterMainApp();
+
+    // 等待界面显示后自动开始跑步
+    setTimeout(() => {
+      const startRunBtn = document.getElementById('startRun');
+      if (startRunBtn) {
+        startRunBtn.click();
+      }
+    }, 400);
+  });
+}
+
+// 麦克风按钮点击 - 进入主界面但不开始跑步
+if (launchMicBtn) {
+  launchMicBtn.addEventListener('click', () => {
+    enterMainApp();
+
+    // 可以选择打开聊天界面或语音输入
+    setTimeout(() => {
+      const messageInput = document.getElementById('message');
+      if (messageInput) {
+        messageInput.focus();
+      }
+    }, 400);
+  });
+}
+
+// 路线卡片点击事件
+const routeCards = document.querySelectorAll('.route-card');
+routeCards.forEach(card => {
+  card.addEventListener('click', function() {
+    const routeName = this.querySelector('.route-name')?.textContent;
+    console.log(`选择路线: ${routeName}`);
+
+    // 进入主界面
+    enterMainApp();
+
+    // 可以根据路线名称设置目的地（未来扩展）
+    setTimeout(() => {
+      // TODO: 根据routeName设置目的地
+      const startRunBtn = document.getElementById('startRun');
+      if (startRunBtn) {
+        startRunBtn.click();
+      }
+    }, 400);
+  });
+});
+
+// 启动屏定时更新
+let launchScreenTimer = null;
+if (launchScreen && launchScreen.style.display !== 'none') {
+  // 初始更新
+  updateLaunchTime();
+  updateLaunchEnergy();
+
+  // 定时更新时间和元气值
+  launchScreenTimer = setInterval(() => {
+    updateLaunchTime();
+    updateLaunchEnergy();
+  }, 1000);
+}
+
+// 导出供调试使用
+window.enterMainApp = enterMainApp;
+
+console.log('✅ Figma启动屏已初始化');
+

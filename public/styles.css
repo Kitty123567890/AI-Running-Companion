@@ -342,3 +342,292 @@ button#clearRun, button#clearChat {
 .energy-bar-fill[data-level="excellent"] {
   background: linear-gradient(90deg, #FF6B35, #F7931E);
 }
+
+/* ========================================
+   Figma风格启动屏样式
+   ======================================== */
+
+.launch-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: #000000;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.launch-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 顶部状态栏 */
+.status-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #FFFFFF;
+}
+
+.time {
+  font-weight: 500;
+}
+
+.battery {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.battery-indicator {
+  color: #20D0B7;
+  font-size: 12px;
+  animation: batteryPulse 2s infinite;
+}
+
+@keyframes batteryPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.battery-percent {
+  font-size: 13px;
+}
+
+/* 中央心脏容器 */
+.launch-heart-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 24px;
+}
+
+.launch-heart-icon {
+  width: 180px;
+  height: 180px;
+  position: relative;
+  animation: heartbeat-slow 2.2s infinite;
+  filter: drop-shadow(0 12px 40px rgba(255, 122, 89, 0.6));
+}
+
+/* 光晕效果 */
+.launch-heart-icon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 160%;
+  height: 160%;
+  background: radial-gradient(circle, rgba(255, 122, 89, 0.4) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: launchHeartGlow 3s infinite;
+  pointer-events: none;
+}
+
+@keyframes launchHeartGlow {
+  0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+.welcome-text {
+  font-size: 18px;
+  font-weight: 400;
+  color: #FFFFFF;
+  text-align: center;
+  letter-spacing: 0.5px;
+  animation: textFadeIn 1.5s ease;
+}
+
+@keyframes textFadeIn {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* 路线推荐区域 */
+.route-recommendations {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 20px;
+}
+
+.route-section-title {
+  font-size: 12px;
+  color: #999999;
+  margin-bottom: 12px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+}
+
+.route-cards {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.route-card {
+  flex: 1;
+  background: #1A1A1A;
+  border: 1px solid #2A2A2A;
+  border-radius: 16px;
+  padding: 14px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.route-card:hover {
+  background: #242424;
+  border-color: #3A3A3A;
+  transform: translateY(-2px);
+}
+
+.route-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.route-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.route-active-dot {
+  width: 8px;
+  height: 8px;
+  background: #20D0B7;
+  border-radius: 50%;
+  animation: dotPulse 2s infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.8); }
+}
+
+.route-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.route-distance,
+.route-elevation {
+  font-size: 12px;
+  color: #999999;
+}
+
+/* 底部操作按钮 */
+.launch-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 30px;
+}
+
+.mic-button {
+  width: 56px;
+  height: 56px;
+  background: #2A2A2A;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.mic-button:hover {
+  background: #3A3A3A;
+  transform: scale(1.05);
+}
+
+.mic-button:active {
+  transform: scale(0.95);
+}
+
+.play-button {
+  width: 72px;
+  height: 72px;
+  background: linear-gradient(135deg, #FF7A59, #FF5D6C);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 24px rgba(255, 122, 89, 0.5);
+  padding-left: 4px; /* 视觉居中调整 */
+}
+
+.play-button:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 32px rgba(255, 122, 89, 0.7);
+}
+
+.play-button:active {
+  transform: scale(0.95);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .launch-heart-icon {
+    width: 140px;
+    height: 140px;
+  }
+
+  .welcome-text {
+    font-size: 16px;
+  }
+
+  .route-cards {
+    flex-direction: column;
+  }
+
+  .route-card {
+    width: 100%;
+  }
+}
+
+@media (max-height: 700px) {
+  .launch-heart-icon {
+    width: 120px;
+    height: 120px;
+  }
+
+  .welcome-text {
+    font-size: 15px;
+  }
+
+  .route-recommendations {
+    margin-bottom: 16px;
+  }
+
+  .launch-actions {
+    margin-bottom: 20px;
+  }
+}
