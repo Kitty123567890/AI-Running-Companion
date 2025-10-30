@@ -1,83 +1,261 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Running Companion</title>
     <link rel="stylesheet" href="public/styles.css" />
+    <!-- 必须在 AMap JS 脚本之前设置安全配置 -->
+    <script>
+      window._AMapSecurityConfig = {
+        securityJsCode: '7eebc65acddef3b1646d11067b1b4011'
+        // 如需代理 REST 服务，请开启并设置：
+        // serviceHost: 'http://localhost:5500/_AMapService'
+      };
+    </script>
+    <!-- AMap (Gaode) JS API -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=ed766e40d4f470557ab1d30502c129f9&plugin=AMap.Geocoder,AMap.Walking,AMap.Geolocation"></script>
   </head>
   <body>
-    <header class="app-header">
-      <h1>AI Running Companion</h1>
+    <!-- Figma风格启动屏 -->
+    <div class="launch-screen" id="launchScreen">
+      <!-- 顶部状态栏 -->
+      <div class="status-bar">
+        <div class="time" id="currentTime">21:09</div>
+        <div class="battery">
+          <span class="battery-indicator">●</span>
+          <span class="battery-percent" id="energyPercent">95%</span>
+        </div>
+      </div>
+
+      <!-- 中央心脏显示 -->
+      <div class="launch-heart-container">
+        <div class="launch-heart-icon" id="launchHeartIcon" data-state="excellent">
+          <svg class="heart-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="launchHeartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" id="launchHeartGradStart" style="stop-color:#FF7A59;stop-opacity:1" />
+                <stop offset="100%" id="launchHeartGradEnd" style="stop-color:#FF5D6C;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <path fill="url(#launchHeartGradient)"
+              d="M50,85 C50,85 15,60 15,40 C15,25 25,15 35,15 C42,15 48,20 50,25 C52,20 58,15 65,15 C75,15 85,25 85,40 C85,60 50,85 50,85 Z"/>
+          </svg>
+        </div>
+        <div class="welcome-text">准备好一起跑步了吗？</div>
+      </div>
+
+      <!-- 推荐路线 -->
+      <div class="route-recommendations">
+        <div class="route-section-title">推荐路线</div>
+        <div class="route-cards">
+          <div class="route-card">
+            <div class="route-card-header">
+              <span class="route-name">公园环线</span>
+              <span class="route-active-dot"></span>
+            </div>
+            <div class="route-stats">
+              <span class="route-distance">📍 3.5km</span>
+              <span class="route-elevation">⛰ +45m</span>
+            </div>
+          </div>
+          <div class="route-card">
+            <div class="route-card-header">
+              <span class="route-name">河滨大道</span>
+            </div>
+            <div class="route-stats">
+              <span class="route-distance">📍 5.0km</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部操作按钮 -->
+      <div class="launch-actions">
+        <button type="button" class="mic-button" id="launchMicBtn" title="语音交互">🎤</button>
+        <button type="button" class="play-button" id="launchPlayBtn" title="开始跑步">▶</button>
+      </div>
+    </div>
+
+    <!-- 元气值显示（右上角浮动 - 跑步时显示） -->
+    <div class="energy-container" id="energyContainer" style="display: none;">
+      <div class="energy-bar-wrapper">
+        <div class="energy-label">
+          <span>💪</span>
+          <span>元气值</span>
+        </div>
+        <div class="energy-bar">
+          <div class="energy-bar-fill" id="energyBarFill" data-level="excellent" style="width: 100%;"></div>
+        </div>
+        <div class="energy-value" id="energyValue" data-level="excellent">100%</div>
+      </div>
+    </div>
+
+    <header class="app-header" id="appHeader" style="display: none;">
+      <h1>AI 跑步教练</h1>
       <div class="header-actions">
         <label class="toggle">
           <input type="checkbox" id="voiceToggle" checked />
-          <span>Voice coach</span>
+          <span>语音教练</span>
         </label>
+          <!-- Medal system entry button -->
+          <button type="button" id="medalsBtn" title="我的奖章" style="margin-left:8px;">🏅 奖章</button>
         <label class="toggle">
           <input type="checkbox" id="useOpenAI" />
-          <span>Use OpenAI API</span>
+          <span>使用兼容 OpenAI 的接口</span>
         </label>
-        <input id="openaiKey" type="password" placeholder="OpenAI API key (optional)" />
+        <input id="openaiBase" type="text" placeholder="API 基址（可选，如 http://localhost:11434/v1）" />
+        <input id="modelName" type="text" placeholder="模型（如 gpt-4o-mini 或 llama3.1）" />
+        <input id="openaiKey" type="password" placeholder="API 密钥（可选；如 ollama）" />
       </div>
     </header>
 
-    <main class="app">
+    <main class="app" id="appMain" style="display: none;">
       <section class="panel run-panel">
-        <h2>Run Details</h2>
+        <h2>跑步</h2>
+        
+        <!-- 哈特心脏显示区域 -->
+        <div class="heart-display">
+          <div class="heart-container">
+            <div class="heart-icon" id="heartIcon" data-state="excellent">
+              <svg class="heart-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="heartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" id="heartGradStart" style="stop-color:#FF7A59;stop-opacity:1" />
+                    <stop offset="100%" id="heartGradEnd" style="stop-color:#FF5D6C;stop-opacity:1" />
+                  </linearGradient>
+                </defs>
+                <path id="heartPath" fill="url(#heartGradient)" 
+                  d="M50,85 C50,85 15,60 15,40 C15,25 25,15 35,15 C42,15 48,20 50,25 C52,20 58,15 65,15 C75,15 85,25 85,40 C85,60 50,85 50,85 Z"/>
+              </svg>
+            </div>
+            <div class="energy-message" id="energyMessage">元气满满！</div>
+          </div>
+        </div>
+
         <form id="runForm" class="run-form">
           <div class="field">
-            <label for="destination">Destination</label>
-            <input id="destination" name="destination" type="text" placeholder="e.g., Central Park loop" />
+            <label>模式</label>
+            <label class="toggle"><input type="radio" name="mode" value="free" checked /> 自由跑</label>
+            <label class="toggle"><input type="radio" name="mode" value="dest" /> 目的地跑</label>
+          </div>
+          <div class="field" id="destField" style="display:none">
+            <label for="destination">目的地</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input id="destination" name="destination" type="text" placeholder="名称或经纬度（如 31.23,121.47）" />
+              <button type="button" id="searchPlace">搜索</button>
+            </div>
+            <small>提示：可输入地名后点击「搜索」，或直接填入"纬度,经度"。设置目的地后将自动规划步行路线。</small>
           </div>
           <div class="field">
-            <label for="distance">Distance (km)</label>
-            <input id="distance" name="distance" type="number" min="0" step="0.1" placeholder="e.g., 5" />
+            <label for="gender">性别</label>
+            <select id="gender" name="gender">
+              <option value="">未选择</option>
+              <option value="male">男</option>
+              <option value="female">女</option>
+              <option value="other">其他</option>
+            </select>
           </div>
           <div class="field">
-            <label for="duration">Duration (min)</label>
-            <input id="duration" name="duration" type="number" min="0" step="1" placeholder="e.g., 30" />
-          </div>
-          <div class="field">
-            <label for="avgHr">Avg Heart Rate (bpm)</label>
-            <input id="avgHr" name="avgHr" type="number" min="0" step="1" placeholder="e.g., 150" />
-          </div>
-          <div class="field">
-            <label for="age">Age (yrs, optional)</label>
-            <input id="age" name="age" type="number" min="0" step="1" placeholder="e.g., 35" />
-          </div>
-          <div class="field">
-            <label for="notes">Notes</label>
-            <input id="notes" name="notes" type="text" placeholder="any context: hills, hot, intervals" />
+            <label for="age">年龄</label>
+            <input id="age" name="age" type="number" min="0" step="1" placeholder="例如：35" />
           </div>
           <div class="actions">
-            <button type="submit">Save/Update</button>
-            <button type="button" id="clearRun">Clear</button>
+            <button type="button" id="startRun">开始跑步</button>
+            <button type="button" id="stopRun" disabled>停止</button>
+            <button type="button" id="clearRun">清空</button>
+            <button type="button" id="shareRunBtn">分享</button>
           </div>
         </form>
-        <div id="runSummary" class="run-summary"></div>
+        <div id="runSummary" class="run-summary">
+          <div><strong>当前状态：</strong><span id="statusText">未开始</span></div>
+          <div><strong>当前位置：</strong><span id="posText">-</span></div>
+          <div><strong>即时配速：</strong><span id="instPaceText">-</span></div>
+          <div><strong>平均配速：</strong><span id="avgPaceText">-</span></div>
+          <div><strong>已跑距离：</strong><span id="distText">-</span></div>
+          <div><strong>用时：</strong><span id="timeText">-</span></div>
+          <div id="toDestRow" style="display:none"><strong>距离目的地：</strong><span id="toDestText">-</span></div>
+        </div>
+        <div class="map-wrap">
+          <div id="map" class="map" aria-label="跑步路线地图"></div>
+          <small class="map-hint">提示：在地图上点击可设置目的地坐标</small>
+        </div>
       </section>
 
       <section class="panel chat-panel">
-        <h2>Coach Chat</h2>
+        <h2>教练聊天</h2>
         <div id="chat" class="chat"></div>
         <form id="chatForm" class="chat-input">
-          <button type="button" id="micBtn" title="Hold to speak">🎤</button>
-          <input id="message" type="text" autocomplete="off" placeholder="Ask the coach anything…" />
-          <button type="submit">Send</button>
-          <button type="button" id="clearChat" title="Clear chat">Clear</button>
+          <button type="button" id="micBtn" title="点击说话">🎤</button>
+          <input id="message" type="text" autocomplete="off" placeholder="向教练提问……" />
+          <button type="submit">发送</button>
+          <button type="button" id="clearChat" title="清空聊天">清空</button>
         </form>
+      </section>
+
+      <section class="panel goals-panel">
+        <h2>目标与打卡</h2>
+        <div class="field">
+          <label>今日打卡</label>
+          <div class="actions">
+            <button type="button" id="checkinBtn">今日打卡</button>
+            <button type="button" id="shareCheckinBtn">分享</button>
+            <span id="checkinStatus" class="tip"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label>AI 目标建议</label>
+          <div class="actions">
+            <button type="button" id="aiGoalBtn">AI 目标建议</button>
+          </div>
+          <small>根据你的基础信息与训练目标，生成阶段性训练目标与建议。</small>
+        </div>
       </section>
     </main>
 
-    <footer class="app-footer">
+    <footer class="app-footer" id="appFooter" style="display: none;">
       <small>
-        Tips are educational only and not medical advice. Consult a professional for health concerns.
+        以上建议仅供参考，不构成医疗建议。如有健康问题请咨询专业人士。
       </small>
     </footer>
 
+    <!-- Scripts -->
+    <!-- AI 目标建议对话框 -->
+    <div id="aiGoalModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h3>AI 目标建议问卷</h3>
+        <form id="aiGoalForm" class="form">
+          <div class="field-grid">
+            <label>身高(cm)</label>
+            <input type="number" id="qHeight" min="100" max="250" step="1" />
+            <label>体重(kg)</label>
+            <input type="number" id="qWeight" min="30" max="200" step="0.1" />
+            <label>跑步目的</label>
+            <select id="qPurpose">
+              <option value="健康">健康</option>
+              <option value="减脂">减脂</option>
+              <option value="PB提升">PB 提升</option>
+              <option value="备赛">备赛</option>
+            </select>
+            <label>当前 PB（如 5K 24:30）</label>
+            <input type="text" id="qPB" placeholder="项目 + 成绩，如 10K 50:00" />
+            <label>周跑量(公里)</label>
+            <input type="number" id="qWeeklyKm" min="0" max="300" step="1" />
+            <label>每周可训练天数</label>
+            <input type="number" id="qDaysPerWeek" min="1" max="7" step="1" />
+          </div>
+          <div class="actions" style="margin-top:12px;">
+            <button type="submit">生成建议</button>
+            <button type="button" id="aiGoalCancel">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="public/energy-system.js"></script>
     <script src="public/analysis.js"></script>
+    <script src="public/medalSystem.js"></script>
+    <script src="public/shareSystem.js"></script>
     <script src="public/app.js"></script>
   </body>
-  </html>
-
+</html>
