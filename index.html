@@ -5,8 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Running Companion</title>
     <link rel="stylesheet" href="public/styles.css" />
+    <!-- 必须在 AMap JS 脚本之前设置安全配置 -->
+    <script>
+      window._AMapSecurityConfig = {
+        securityJsCode: '7eebc65acddef3b1646d11067b1b4011'
+        // 如需代理 REST 服务，请开启并设置：
+        // serviceHost: 'http://localhost:5500/_AMapService'
+      };
+    </script>
     <!-- AMap (Gaode) JS API -->
-    <script src="https://webapi.amap.com/maps?v=2.0&key=140d24038c90740029caf8b4d36a0964"></script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=ed766e40d4f470557ab1d30502c129f9&plugin=AMap.Geocoder,AMap.Walking,AMap.Geolocation"></script>
   </head>
   <body>
     <!-- Figma风格启动屏 -->

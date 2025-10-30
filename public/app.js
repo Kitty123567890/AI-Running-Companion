@@ -55,6 +55,7 @@
     destMarker: null,
     startMarker: null,
     weather: { lastAt: 0, tempC: null, windKph: null, weatherCode: null, desc: null },
+    geoCtrl: null,
     // milestones
     lastKmSpoken: 0,
     lastKmAtTime: null,
@@ -63,20 +64,21 @@
 
   // Map helpers (AMap)
   const isFiniteNum = (v) => Number.isFinite(v);
+  const MAX_WALK_PLAN_KM = 30; // 步行路线最大规划距离，超出则跳过以避免 OVER_DIRECTION_RANGE
   function initMapIfNeeded() {
     if (!mapEl || state.map || typeof AMap === 'undefined') return;
+    // Avoid initializing map when container is hidden or has no size
+    try {
+      const cs = window.getComputedStyle(mapEl);
+      const hidden = cs && (cs.display === 'none' || cs.visibility === 'hidden');
+      if (hidden || mapEl.offsetWidth === 0 || mapEl.offsetHeight === 0) return;
+    } catch {}
     const m = new AMap.Map(mapEl, {
       zoom: 14,
       center: [116.397428, 39.90923], // Default Tiananmen Square, Beijing
       viewMode: '3D'
     });
-    // Main running track polyline
-    state.routeLine = new AMap.Polyline({
-      path: [],
-      strokeColor: '#47a3ff',
-      strokeWeight: 4
-    });
-    m.add(state.routeLine);
+    // routeLine 延迟到首次定位点到来时再创建，避免空路径告警
     // Clicking the map sets destination
     m.on('click', (e) => {
       const { lng, lat } = e.lnglat || {};
@@ -116,35 +118,113 @@
     if (state.run && isFiniteNum(state.run?.destLat) && isFiniteNum(state.run?.destLng)) {
       updateDestMarker(state.run.destLat, state.run.destLng, state.run.destLabel || '目的地');
     }
+    // One-time geolocation to show and center on user's current position
+    if ('geolocation' in navigator) {
+      try {
+        navigator.geolocation.getCurrentPosition((pos)=>{
+          const { longitude: lng, latitude: lat } = pos.coords || {};
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            ensurePosMarker(lat, lng);
+            try { state.map.setZoomAndCenter(16, [lng, lat]); } catch {}
+          }
+        }, (err)=>{ console.warn('initial geolocation failed', err); }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
+      } catch {}
+    }
+
+    // Add AMap native Geolocation control (blue dot + button)
+    try {
+      AMap.plugin('AMap.Geolocation', function(){
+        try {
+          const geo = new AMap.Geolocation({
+            enableHighAccuracy: true,
+            timeout: 10000,
+            position: 'RB',
+            zoomToAccuracy: true,
+            showButton: true,
+            showCircle: true,
+            showMarker: true,
+            panToLocation: true,
+            convert: true,
+          });
+          // Attach to map
+          try { m.addControl ? m.addControl(geo) : m.add(geo); } catch {}
+          state.geoCtrl = geo;
+          // Trigger once to display blue dot and center
+          try {
+            geo.getCurrentPosition((status, result) => {
+              if (status === 'complete' && result && result.position) {
+                const pos = result.position;
+                const lng = (typeof pos.getLng === 'function') ? pos.getLng() : pos.lng;
+                const lat = (typeof pos.getLat === 'function') ? pos.getLat() : pos.lat;
+                if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                  ensurePosMarker(lat, lng);
+                  try { m.setZoomAndCenter(16, [lng, lat]); } catch {}
+                }
+              } else {
+                console.warn('geolocation control failed', result);
+              }
+            });
+          } catch {}
+        } catch (e) { console.warn('AMap.Geolocation error', e); }
+      });
+    } catch {}
   }
 
   function updateRouteOnMap(point) {
     if (!state.map || !state.routeLine) return;
-    const path = state.routeLine.getPath() || [];
-    path.push(new AMap.LngLat(point.lng, point.lat));
-    state.routeLine.setPath(path);
+    const lng = Number(point?.lng);
+    const lat = Number(point?.lat);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+    if (!state.routeLine) {
+      try {
+        state.routeLine = new AMap.Polyline({
+          path: [new AMap.LngLat(lng, lat)],
+          strokeColor: '#47a3ff',
+          strokeWeight: 4
+        });
+        state.map.add(state.routeLine);
+      } catch { /* ignore */ }
+    } else {
+      const path = state.routeLine.getPath() || [];
+      try { path.push(new AMap.LngLat(lng, lat)); } catch { return; }
+      try { state.routeLine.setPath(path); } catch {}
+    }
     if (!state.startMarker) {
-      state.startMarker = new AMap.Marker({ position: [point.lng, point.lat], title: '起点' });
-      state.map.add(state.startMarker);
+      state.startMarker = new AMap.Marker({ position: [lng, lat], title: '起点' });
+      try { state.map.add(state.startMarker); } catch {}
     }
     if (!state.posMarker) {
-      state.posMarker = new AMap.Marker({ position: [point.lng, point.lat], title: '当前位置' });
-      state.map.add(state.posMarker);
+      state.posMarker = new AMap.Marker({ position: [lng, lat], title: '当前位置' });
+      try { state.map.add(state.posMarker); } catch {}
     } else {
-      state.posMarker.setPosition([point.lng, point.lat]);
+      try { state.posMarker.setPosition([lng, lat]); } catch {}
     }
     // Follow user when running
     const z = state.map.getZoom();
-    const targetZ = !isFinite(z) ? 15 : Math.max(z, 15);
-    state.map.setZoomAndCenter(targetZ, [point.lng, point.lat]);
+    const targetZ = !Number.isFinite(z) ? 15 : Math.max(z, 15);
+    try { state.map.setZoomAndCenter(targetZ, [lng, lat]); } catch {}
     // Plan/update route if destination exists
     maybePlanRoute();
   }
 
   function clearRouteOnMap() {
-    if (state.routeLine) state.routeLine.setPath([]);
+    if (state.routeLine && state.map) { try { state.map.remove(state.routeLine); } catch {} }
+    state.routeLine = null;
     if (state.posMarker && state.map) { try { state.map.remove(state.posMarker); } catch {} state.posMarker = null; }
     if (state.startMarker && state.map) { try { state.map.remove(state.startMarker); } catch {} state.startMarker = null; }
+  }
+
+  function ensurePosMarker(lat, lng, label) {
+    if (!state.map || typeof AMap === 'undefined') return;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if (!state.posMarker) {
+      try {
+        state.posMarker = new AMap.Marker({ position: [lng, lat], title: label || '当前位置' });
+        state.map.add(state.posMarker);
+      } catch {}
+    } else {
+      try { state.posMarker.setPosition([lng, lat]); } catch {}
+    }
   }
 
   function updateDestMarker(lat, lng, label) {
@@ -376,7 +456,8 @@
   }
 
   function handlePosition(pos){
-    const { latitude: lat, longitude: lng, speed } = pos.coords;
+    const { latitude: lat, longitude: lng, speed } = pos.coords || {};
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) { return; }
     const ts = pos.timestamp || Date.now();
     const point = { lat, lng, ts };
     const prev = state.track[state.track.length - 1];
@@ -526,6 +607,14 @@
 
   async function planRoute(from, to){
     if (!from || !to || !state.map || typeof AMap === 'undefined') return;
+    const distKm = haversineKm(from, to);
+    if (!Number.isFinite(distKm) || distKm > MAX_WALK_PLAN_KM) {
+      // 距离过远，AMap.Walking 会返回 OVER_DIRECTION_RANGE，直接跳过并清理已有规划线
+      if (state.routePlanLine && state.map) { try { state.map.remove(state.routePlanLine); } catch {} }
+      state.routePlanLine = null;
+      console.warn('Skipping walking route planning, distance too far:', distKm);
+      return;
+    }
     AMap.plugin('AMap.Walking', function(){
       try {
         const walking = new AMap.Walking({ policy: 0 });
@@ -814,6 +903,7 @@
       state,
       speak,
       voiceToggle,
+      ensureMap: initMapIfNeeded,
     });
   } catch {}
 })();
@@ -1100,6 +1190,8 @@ function enterMainApp() {
       clearInterval(launchScreenTimer);
     }
 
+    // 主界面可见后再初始化地图，避免容器尺寸为0导致 AMap 报错
+    try { window.App?.ensureMap?.(); } catch {}
     console.log('✅ 进入主界面');
   }, 300);
 }
