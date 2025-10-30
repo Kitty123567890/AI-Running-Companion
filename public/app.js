@@ -841,29 +841,35 @@ const heartGradEnd = document.getElementById('heartGradEnd');
 const energyMessage = document.getElementById('energyMessage');
 
 /**
- * 更新元气值UI显示
+ * 更新元气值UI显示 - 增强版支持6级哈特系统
  */
 function updateEnergyUI() {
   const status = energySystem.getDetailedStatus();
-  
+
   // 更新进度条
   if (energyBarFill) {
     energyBarFill.style.width = status.percent;
     energyBarFill.setAttribute('data-level', status.state);
   }
-  
+
   // 更新数值显示
   if (energyValue) {
     energyValue.textContent = status.percent;
     energyValue.setAttribute('data-level', status.state);
   }
-  
+
   // 更新心脏状态
   if (heartIcon) {
     heartIcon.setAttribute('data-state', status.state);
     heartIcon.style.transform = `scale(${status.scale})`;
+    heartIcon.style.opacity = status.opacity || 1.0;
   }
-  
+
+  // 更新心脏SVG路径的不透明度
+  if (heartPath) {
+    heartPath.style.opacity = status.opacity || 1.0;
+  }
+
   // 更新心脏颜色渐变
   if (heartGradStart && heartGradEnd) {
     const gradColors = status.gradient.match(/#[0-9A-Fa-f]{6}/g);
@@ -872,10 +878,11 @@ function updateEnergyUI() {
       heartGradEnd.style.stopColor = gradColors[1];
     }
   }
-  
-  // 更新激励消息
+
+  // 更新激励消息，使用等级名称
   if (energyMessage) {
-    energyMessage.textContent = status.message;
+    const levelInfo = status.name ? `Lv.${status.level} ${status.name}` : status.message;
+    energyMessage.textContent = `${levelInfo} - ${status.message}`;
     energyMessage.style.color = status.color;
   }
 }
@@ -1049,7 +1056,7 @@ function updateLaunchTime() {
   currentTimeEl.textContent = `${hours}:${minutes}`;
 }
 
-// 更新启动屏元气值显示（显示在电量位置）
+// 更新启动屏元气值显示（显示在电量位置）- 增强版支持6级系统
 function updateLaunchEnergy() {
   if (!energyPercentEl || !launchHeartIcon) return;
 
@@ -1058,6 +1065,7 @@ function updateLaunchEnergy() {
 
   // 更新启动屏心脏状态
   launchHeartIcon.setAttribute('data-state', status.state);
+  launchHeartIcon.style.opacity = status.opacity || 1.0;
 
   // 更新启动屏心脏渐变色
   const launchHeartGradStart = document.getElementById('launchHeartGradStart');
