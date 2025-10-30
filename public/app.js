@@ -360,6 +360,13 @@
       updateCheckinUi();
       addMsg('assistant', '已完成今日打卡，继续加油！');
       speak('已完成今日打卡，继续加油');
+      // Award streak medal if reached
+      try {
+        const streak = calcStreak(arr || []);
+        if (streak >= 7) {
+          try { if (typeof window !== 'undefined' && window.MedalSystem && typeof window.MedalSystem.award === 'function') window.MedalSystem.award(null, 'streak_7', { streak }); } catch (e) {}
+        }
+      } catch (e) {}
     }
   }
 
@@ -370,6 +377,21 @@
     const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = role === 'user' ? '你' : '教练';
     const body = document.createElement('div'); body.className = 'text'; body.textContent = text;
     el.appendChild(meta); el.appendChild(body);
+    // For assistant messages, add a small share button
+    if (role !== 'user') {
+      try {
+        const shareBtn = document.createElement('button'); shareBtn.type = 'button'; shareBtn.textContent = '分享'; shareBtn.className = 'msg-share-btn';
+        shareBtn.style.marginLeft = '8px'; shareBtn.style.fontSize = '12px'; shareBtn.addEventListener('click', (e)=>{
+          try {
+            if (window.ShareSystem && typeof window.ShareSystem.share === 'function') {
+              window.ShareSystem.share('ai', { text }, { title: '教练建议' });
+            } else alert('分享系统未加载');
+          } catch (err) { console.warn('share assistant msg error', err); }
+        });
+        // append to meta area for compact UI
+        meta.appendChild(shareBtn);
+      } catch (e) { /* ignore */ }
+    }
     chatEl.appendChild(el);
     chatEl.scrollTop = chatEl.scrollHeight;
   }
@@ -554,7 +576,18 @@
     state.track.push(point);
     if (prev){
       const d = haversineKm(prev, point);
+      const prevTotal = state.totalDistanceKm || 0;
       state.totalDistanceKm += d;
+      // Award total_10km when crossing 10 km
+      try {
+        if (typeof window !== 'undefined' && window.MedalSystem && typeof window.MedalSystem.award === 'function') {
+          try {
+            if (prevTotal < 10 && (state.totalDistanceKm || 0) >= 10) {
+              window.MedalSystem.award(null, 'total_10km', { distance: state.totalDistanceKm });
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
     }
     // Instant pace: prefer native speed m/s if valid, else derive from last segment
     let mPerKm = null;
@@ -631,6 +664,18 @@
     fitToRoute();
     const tips = window.LocalCoach.analyzeRun({...state.run, distance: state.totalDistanceKm, duration: Math.round((Date.now()-state.startTime)/60000)});
     if (tips.length){ addMsg('assistant', `本次结束。${tips[0]}`); speak(tips[0]); }
+    // Personal best detection: compare average pace (min/km) with stored best and award pb_run if improved
+    try {
+      const avg = state.run?.avgPaceMinPerKm;
+      if (isFinite(avg) && avg > 0) {
+        const BEST_KEY = 'ai_running_best_avgPace_local';
+        const prev = parseFloat(localStorage.getItem(BEST_KEY) || '');
+        if (!isFinite(prev) || avg < prev) {
+          try { if (typeof window !== 'undefined' && window.MedalSystem && typeof window.MedalSystem.award === 'function') window.MedalSystem.award(null, 'pb_run', { avgPace: avg, prev }); } catch (e) {}
+          try { localStorage.setItem(BEST_KEY, String(avg)); } catch (e) {}
+        }
+      }
+    } catch (e) { console.warn('pb detection error', e); }
   }
 
   // --- Weather ---
@@ -896,6 +941,34 @@
     else { addMsg('assistant', '暂时无法生成建议，请稍后再试。'); }
   });
   if (checkinBtn) checkinBtn.addEventListener('click', ()=> doCheckin('用户手动打卡'));
+
+  // Header: Medals button (打开/关闭奖章面板)
+  try {
+    const medalsBtn = document.getElementById('medalsBtn');
+    if (medalsBtn) {
+      medalsBtn.addEventListener('click', () => {
+        try {
+          if (typeof window !== 'undefined' && window.MedalSystem) {
+            // ensure initialized once
+            if (!document.getElementById('medal-system-root') && typeof window.MedalSystem.init === 'function') {
+              try { window.MedalSystem.init({ userId: null }); } catch (e) { console.warn('MedalSystem init err', e); }
+            }
+            const root = document.getElementById('medal-system-root');
+            const panel = root ? root.querySelector('.medal-panel') : null;
+            if (panel) {
+              panel.style.display = (panel.style.display === 'none' ? 'block' : 'none');
+            } else {
+              // Fallback: initialize (will create panel)
+              try { if (typeof window.MedalSystem.init === 'function') window.MedalSystem.init({ userId: null }); } catch (e) { console.warn(e); }
+            }
+          } else {
+            console.warn('MedalSystem not available');
+            alert('奖章系统未加载');
+          }
+        } catch (e) { console.warn('medalsBtn click error', e); }
+      });
+    }
+  } catch (e) {}
 
   // Events: running controls & form
   runForm.addEventListener('change', (e)=>{
@@ -1224,7 +1297,42 @@ function onKilometerCompleted(km) {
   if (getApp()?.voiceToggle?.checked && getApp()?.speak) {
     try { getApp().speak(message); } catch {}
   }
+
+  // Award medal on first completed kilometer (first run milestone)
+  try {
+    if (typeof window !== 'undefined' && window.MedalSystem && typeof window.MedalSystem.award === 'function') {
+      try { if ((Number(km) || 0) === 1) { window.MedalSystem.award(null, 'first_run', { km }); } } catch (e) {}
+    }
+  } catch (e) {}
 }
+
+// Share buttons: checkin & run
+try {
+  const shareCheckinBtn = document.getElementById('shareCheckinBtn');
+  if (shareCheckinBtn) {
+    shareCheckinBtn.addEventListener('click', () => {
+      try {
+        const arr = loadCheckins();
+        const today = fmtDateKey(new Date());
+        const todayRec = arr.find(x=>x.date===today) || { date: today, distanceKm: state.totalDistanceKm || 0, durationMin: state.startTime ? Math.round((Date.now()-state.startTime)/60000) : null };
+        if (window.ShareSystem && typeof window.ShareSystem.share === 'function') {
+          window.ShareSystem.share('checkin', todayRec, { title: `打卡：${todayRec.date}`, text: `已打卡 ${todayRec.distanceKm || 0} km` });
+        } else alert('分享系统未加载');
+      } catch (e) { console.warn('shareCheckin error', e); }
+    });
+  }
+  const shareRunBtn = document.getElementById('shareRunBtn');
+  if (shareRunBtn) {
+    shareRunBtn.addEventListener('click', () => {
+      try {
+  const runData = { distanceKm: state.totalDistanceKm || 0, durationMin: state.startTime ? Math.round((Date.now()-state.startTime)/60000) : null, avgPace: state.run?.avgPaceMinPerKm || null, tips: '', track: (state.track||[]).map(p=>({ lat: p.lat, lng: p.lng })) };
+        if (window.ShareSystem && typeof window.ShareSystem.share === 'function') {
+          window.ShareSystem.share('run', runData, { title: '跑步记录分享', text: `已跑 ${runData.distanceKm.toFixed(2)} km` });
+        } else alert('分享系统未加载');
+      } catch (e) { console.warn('shareRun error', e); }
+    });
+  }
+} catch (e) {}
 
 // 导出供其他模块使用
 window.energySystem = energySystem;
@@ -1378,4 +1486,14 @@ if (launchScreen && launchScreen.style.display !== 'none') {
 window.enterMainApp = enterMainApp;
 
 console.log('✅ Figma启动屏已初始化');
+
+// -----------------------------
+// MedalSystem 最小化初始化
+// 如果页面已加载 medalSystem.js，则在此处进行一次安全的初始化（不引入大量逻辑）
+try {
+  if (window.MedalSystem && typeof window.MedalSystem.init === 'function') {
+    // 使用默认 userId（null 表示本地存储），只做面板初始化
+    try { window.MedalSystem.init({ userId: null }); console.log('✅ MedalSystem 已初始化'); } catch (e) { console.warn('MedalSystem init error', e); }
+  }
+} catch (e) { console.warn('MedalSystem safe init failed', e); }
 
