@@ -745,3 +745,193 @@
   if (modelNameInput) modelNameInput.addEventListener('change', saveCfg);
 })();
 
+
+
+// ========================================
+// 元气值和哈特心脏系统集成
+// ========================================
+
+// 初始化元气值系统
+const energySystem = new EnergySystem();
+
+// UI元素引用
+const energyBarFill = document.getElementById('energyBarFill');
+const energyValue = document.getElementById('energyValue');
+const heartIcon = document.getElementById('heartIcon');
+const heartPath = document.getElementById('heartPath');
+const heartGradStart = document.getElementById('heartGradStart');
+const heartGradEnd = document.getElementById('heartGradEnd');
+const energyMessage = document.getElementById('energyMessage');
+
+/**
+ * 更新元气值UI显示
+ */
+function updateEnergyUI() {
+  const status = energySystem.getDetailedStatus();
+  
+  // 更新进度条
+  if (energyBarFill) {
+    energyBarFill.style.width = status.percent;
+    energyBarFill.setAttribute('data-level', status.state);
+  }
+  
+  // 更新数值显示
+  if (energyValue) {
+    energyValue.textContent = status.percent;
+    energyValue.setAttribute('data-level', status.state);
+  }
+  
+  // 更新心脏状态
+  if (heartIcon) {
+    heartIcon.setAttribute('data-state', status.state);
+    heartIcon.style.transform = `scale(${status.scale})`;
+  }
+  
+  // 更新心脏颜色渐变
+  if (heartGradStart && heartGradEnd) {
+    const gradColors = status.gradient.match(/#[0-9A-Fa-f]{6}/g);
+    if (gradColors && gradColors.length >= 2) {
+      heartGradStart.style.stopColor = gradColors[0];
+      heartGradEnd.style.stopColor = gradColors[1];
+    }
+  }
+  
+  // 更新激励消息
+  if (energyMessage) {
+    energyMessage.textContent = status.message;
+    energyMessage.style.color = status.color;
+  }
+}
+
+/**
+ * 集成元气值更新到现有的跑步追踪逻辑
+ */
+(function integrateEnergySystem() {
+  // 保存原始的位置更新处理器
+  const originalWatchSuccess = state.handleWatchSuccess || function() {};
+  
+  // 包装位置更新处理器以包含元气值更新
+  state.handleWatchSuccess = function(position) {
+    // 调用原始处理
+    if (typeof originalWatchSuccess === 'function') {
+      originalWatchSuccess(position);
+    }
+    
+    // 计算运动指标用于元气值系统
+    const metrics = {
+      running: state.running,
+      instantPace: calculateInstantaneousPace(),
+      targetPace: 6.0, // 可以从用户设置获取
+      duration: state.running && state.startTime ? 
+        Math.floor((Date.now() - state.startTime) / 1000) : 0,
+      heartRate: estimateHeartRate(), // 估算心率
+      justStopped: !state.running && state.track.length > 0
+    };
+    
+    // 更新元气值
+    energySystem.updateEnergy(metrics);
+    
+    // 更新UI
+    updateEnergyUI();
+  };
+  
+  // 计算即时配速（基于最近的位置点）
+  function calculateInstantaneousPace() {
+    if (state.track.length < 2) return Infinity;
+    
+    const recentPoints = state.track.slice(-5); // 最近5个点
+    let totalDist = 0;
+    let totalTime = 0;
+    
+    for (let i = 1; i < recentPoints.length; i++) {
+      const dist = haversineKm(
+        recentPoints[i-1].lat, recentPoints[i-1].lng,
+        recentPoints[i].lat, recentPoints[i].lng
+      );
+      const time = (recentPoints[i].timestamp - recentPoints[i-1].timestamp) / 1000;
+      totalDist += dist;
+      totalTime += time;
+    }
+    
+    if (totalDist <= 0 || totalTime <= 0) return Infinity;
+    
+    // 返回分钟/公里
+    return (totalTime / 60) / totalDist;
+  }
+  
+  // 估算心率（基于配速和年龄）
+  function estimateHeartRate() {
+    const pace = calculateInstantaneousPace();
+    if (!pace || pace === Infinity) return 75;
+    
+    const age = parseInt(document.getElementById('age')?.value) || 30;
+    const maxHR = 220 - age;
+    
+    // 根据配速估算心率百分比
+    let hrPercent = 0.5; // 默认50%最大心率
+    
+    if (pace < 4) hrPercent = 0.9;       // 非常快
+    else if (pace < 5) hrPercent = 0.85; // 快速
+    else if (pace < 6) hrPercent = 0.75; // 中等
+    else if (pace < 7) hrPercent = 0.65; // 轻松
+    else hrPercent = 0.55;                 // 慢跑
+    
+    return Math.round(maxHR * hrPercent);
+  }
+  
+  // Haversine公式计算距离
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371; // 地球半径（公里）
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+})();
+
+// 在开始跑步时重置元气值
+const originalStartRun = startRunBtn?.onclick;
+if (startRunBtn) {
+  startRunBtn.addEventListener('click', function() {
+    energySystem.reset();
+    updateEnergyUI();
+  });
+}
+
+// 定期更新元气值（即使没有新的GPS数据）
+setInterval(function() {
+  if (state.running || state.track.length > 0) {
+    const metrics = {
+      running: state.running,
+      instantPace: Infinity,
+      duration: state.running && state.startTime ? 
+        Math.floor((Date.now() - state.startTime) / 1000) : 0,
+      justStopped: !state.running && state.track.length > 0
+    };
+    
+    energySystem.updateEnergy(metrics);
+    updateEnergyUI();
+  }
+}, 2000); // 每2秒更新一次
+
+// 完成公里数时的元气奖励
+function onKilometerCompleted(km) {
+  energySystem.addBoost(5, `完成第${km}公里`);
+  updateEnergyUI();
+  
+  // 语音鼓励
+  const message = `完成第${km}公里！${energySystem.getMotivationalMessage()}`;
+  if (voiceToggle?.checked) {
+    speak(message);
+  }
+}
+
+// 导出供其他模块使用
+window.energySystem = energySystem;
+window.updateEnergyUI = updateEnergyUI;
+
+console.log('✅ 元气值和哈特心脏系统已初始化');
+

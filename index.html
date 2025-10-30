@@ -14,6 +14,20 @@
     />
   </head>
   <body>
+    <!-- 元气值显示（右上角浮动） -->
+    <div class="energy-container">
+      <div class="energy-bar-wrapper">
+        <div class="energy-label">
+          <span>💪</span>
+          <span>元气值</span>
+        </div>
+        <div class="energy-bar">
+          <div class="energy-bar-fill" id="energyBarFill" data-level="excellent" style="width: 100%;"></div>
+        </div>
+        <div class="energy-value" id="energyValue" data-level="excellent">100%</div>
+      </div>
+    </div>
+
     <header class="app-header">
       <h1>AI 跑步教练</h1>
       <div class="header-actions">
@@ -34,6 +48,26 @@
     <main class="app">
       <section class="panel run-panel">
         <h2>跑步</h2>
+        
+        <!-- 哈特心脏显示区域 -->
+        <div class="heart-display">
+          <div class="heart-container">
+            <div class="heart-icon" id="heartIcon" data-state="excellent">
+              <svg class="heart-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="heartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" id="heartGradStart" style="stop-color:#FF7A59;stop-opacity:1" />
+                    <stop offset="100%" id="heartGradEnd" style="stop-color:#FF5D6C;stop-opacity:1" />
+                  </linearGradient>
+                </defs>
+                <path id="heartPath" fill="url(#heartGradient)" 
+                  d="M50,85 C50,85 15,60 15,40 C15,25 25,15 35,15 C42,15 48,20 50,25 C52,20 58,15 65,15 C75,15 85,25 85,40 C85,60 50,85 50,85 Z"/>
+              </svg>
+            </div>
+            <div class="energy-message" id="energyMessage">元气满满！</div>
+          </div>
+        </div>
+
         <form id="runForm" class="run-form">
           <div class="field">
             <label>模式</label>
@@ -46,7 +80,7 @@
               <input id="destination" name="destination" type="text" placeholder="名称或经纬度（如 31.23,121.47）" />
               <button type="button" id="searchPlace">搜索</button>
             </div>
-            <small>提示：可输入地名后点击「搜索」，或直接填入“纬度,经度”。设置目的地后将自动规划步行路线。</small>
+            <small>提示：可输入地名后点击「搜索」，或直接填入"纬度,经度"。设置目的地后将自动规划步行路线。</small>
           </div>
           <div class="field">
             <label for="gender">性别</label>
@@ -100,6 +134,8 @@
       </small>
     </footer>
 
+    <!-- Scripts -->
+    <script src="public/energy-system.js"></script>
     <script src="public/analysis.js"></script>
     <!-- Leaflet JS -->
     <script
@@ -109,4 +145,4 @@
     ></script>
     <script src="public/app.js"></script>
   </body>
-  </html>
+</html>

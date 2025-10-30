@@ -98,3 +98,247 @@ button#clearRun, button#clearChat {
 .map-hint { display: block; margin-top: 6px; color: var(--muted); }
 .map { width: 100%; height: 360px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
 .leaflet-container { background: #0b1117; }
+
+/* ========================================
+   哈特心脏和元气值系统样式
+   基于Figma设计
+   ======================================== */
+
+/* 元气值显示容器 */
+.energy-container {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* 元气值进度条 */
+.energy-bar-wrapper {
+  background: rgba(19, 24, 32, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  backdrop-filter: blur(10px);
+  min-width: 140px;
+}
+
+.energy-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.energy-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.energy-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF7A59, #FF5D6C);
+  border-radius: 10px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.energy-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255,255,255,0.3) 50%, 
+    transparent 100%);
+  animation: energyShine 2s infinite;
+}
+
+@keyframes energyShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.energy-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #FF7A59;
+  margin-top: 4px;
+}
+
+/* 哈特心脏容器 - 基于Figma设计 */
+.heart-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 30px auto;
+  filter: drop-shadow(0 8px 20px rgba(255, 122, 89, 0.4));
+}
+
+.heart-icon {
+  width: 120px;
+  height: 120px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* SVG心脏 */
+.heart-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+/* 心脏跳动动画 */
+@keyframes heartbeat-slow {
+  0%, 100% { transform: scale(1); }
+  10% { transform: scale(1.05); }
+  20% { transform: scale(1); }
+}
+
+@keyframes heartbeat-normal {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.08); }
+  30% { transform: scale(1); }
+}
+
+@keyframes heartbeat-fast {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.12); }
+  50% { transform: scale(1); }
+}
+
+/* 不同状态的心脏 */
+.heart-icon[data-state="critical"] {
+  animation: heartbeat-fast 0.8s infinite;
+}
+
+.heart-icon[data-state="low"] {
+  animation: heartbeat-fast 1.2s infinite;
+}
+
+.heart-icon[data-state="normal"] {
+  animation: heartbeat-normal 1.5s infinite;
+}
+
+.heart-icon[data-state="good"] {
+  animation: heartbeat-normal 1.8s infinite;
+}
+
+.heart-icon[data-state="excellent"] {
+  animation: heartbeat-slow 2.2s infinite;
+}
+
+/* 心脏光晕效果 */
+.heart-icon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140%;
+  height: 140%;
+  background: radial-gradient(circle, rgba(255, 122, 89, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: heartGlow 2s infinite;
+  pointer-events: none;
+}
+
+@keyframes heartGlow {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* 元气值状态消息 */
+.energy-message {
+  position: absolute;
+  bottom: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 600;
+  color: #FF7A59;
+  text-align: center;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  animation: messageFloat 2s ease-in-out infinite;
+}
+
+@keyframes messageFloat {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+/* 在run-panel中添加心脏显示区域 */
+.heart-display {
+  text-align: center;
+  padding: 20px;
+  margin: 16px 0;
+  background: linear-gradient(180deg, rgba(26,32,44,0.5), rgba(16,22,30,0.6));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .energy-container {
+    top: 50px;
+    right: 10px;
+  }
+
+  .energy-bar-wrapper {
+    min-width: 120px;
+    padding: 6px 10px;
+  }
+
+  .heart-icon {
+    width: 90px;
+    height: 90px;
+  }
+
+  .energy-message {
+    font-size: 12px;
+    bottom: -30px;
+  }
+}
+
+/* 元气值数值颜色变化 */
+.energy-value[data-level="critical"] { color: #DC143C; }
+.energy-value[data-level="low"] { color: #FF7F50; }
+.energy-value[data-level="normal"] { color: #FFA500; }
+.energy-value[data-level="good"] { color: #FF7A59; }
+.energy-value[data-level="excellent"] { color: #FF6B35; }
+
+/* 元气值进度条颜色 */
+.energy-bar-fill[data-level="critical"] {
+  background: linear-gradient(90deg, #8B0000, #DC143C);
+}
+
+.energy-bar-fill[data-level="low"] {
+  background: linear-gradient(90deg, #FF6347, #FF7F50);
+}
+
+.energy-bar-fill[data-level="normal"] {
+  background: linear-gradient(90deg, #FFA500, #FFB347);
+}
+
+.energy-bar-fill[data-level="good"] {
+  background: linear-gradient(90deg, #FF7A59, #FF5D6C);
+}
+
+.energy-bar-fill[data-level="excellent"] {
+  background: linear-gradient(90deg, #FF6B35, #F7931E);
+}
