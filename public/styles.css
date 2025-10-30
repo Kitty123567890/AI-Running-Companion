@@ -670,6 +670,40 @@ button#clearRun, button#clearChat {
   }
 }
 
+/* =========================
+   简易模态对话框样式
+   ========================= */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.modal-content {
+  background: #0e141b;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  width: min(560px, 92vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.modal-content h3 { margin: 0 0 12px; }
+.form .field-grid {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px 12px;
+}
+.form input, .form select {
+  background: #0e141b;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
 @media (max-height: 700px) {
   .launch-heart-icon {
     width: 120px;

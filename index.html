@@ -189,6 +189,24 @@
           <button type="button" id="clearChat" title="清空聊天">清空</button>
         </form>
       </section>
+
+      <section class="panel goals-panel">
+        <h2>目标与打卡</h2>
+        <div class="field">
+          <label>今日打卡</label>
+          <div class="actions">
+            <button type="button" id="checkinBtn">今日打卡</button>
+            <span id="checkinStatus" class="tip"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label>AI 目标建议</label>
+          <div class="actions">
+            <button type="button" id="aiGoalBtn">AI 目标建议</button>
+          </div>
+          <small>根据你的基础信息与训练目标，生成阶段性训练目标与建议。</small>
+        </div>
+      </section>
     </main>
 
     <footer class="app-footer" id="appFooter" style="display: none;">
@@ -198,6 +216,38 @@
     </footer>
 
     <!-- Scripts -->
+    <!-- AI 目标建议对话框 -->
+    <div id="aiGoalModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <h3>AI 目标建议问卷</h3>
+        <form id="aiGoalForm" class="form">
+          <div class="field-grid">
+            <label>身高(cm)</label>
+            <input type="number" id="qHeight" min="100" max="250" step="1" />
+            <label>体重(kg)</label>
+            <input type="number" id="qWeight" min="30" max="200" step="0.1" />
+            <label>跑步目的</label>
+            <select id="qPurpose">
+              <option value="健康">健康</option>
+              <option value="减脂">减脂</option>
+              <option value="PB提升">PB 提升</option>
+              <option value="备赛">备赛</option>
+            </select>
+            <label>当前 PB（如 5K 24:30）</label>
+            <input type="text" id="qPB" placeholder="项目 + 成绩，如 10K 50:00" />
+            <label>周跑量(公里)</label>
+            <input type="number" id="qWeeklyKm" min="0" max="300" step="1" />
+            <label>每周可训练天数</label>
+            <input type="number" id="qDaysPerWeek" min="1" max="7" step="1" />
+          </div>
+          <div class="actions" style="margin-top:12px;">
+            <button type="submit">生成建议</button>
+            <button type="button" id="aiGoalCancel">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <script src="public/energy-system.js"></script>
     <script src="public/analysis.js"></script>
     <script src="public/app.js"></script>

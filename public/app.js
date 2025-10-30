@@ -18,6 +18,13 @@
   const destField = document.getElementById('destField');
   const searchPlaceBtn = document.getElementById('searchPlace');
   const mapEl = document.getElementById('map');
+  // Goals & check-in UI
+  const aiGoalBtn = document.getElementById('aiGoalBtn');
+  const aiGoalModal = document.getElementById('aiGoalModal');
+  const aiGoalForm = document.getElementById('aiGoalForm');
+  const aiGoalCancel = document.getElementById('aiGoalCancel');
+  const checkinBtn = document.getElementById('checkinBtn');
+  const checkinStatus = document.getElementById('checkinStatus');
 
   // Metrics display elements
   const statusText = document.getElementById('statusText');
@@ -311,6 +318,51 @@
     localStorage.setItem('run', JSON.stringify(state.run || {}));
   }
 
+  // --------------- 打卡（Check-in）---------------
+  function loadCheckins() {
+    try { return JSON.parse(localStorage.getItem('checkins')||'[]') || []; } catch { return []; }
+  }
+  function saveCheckins(arr) {
+    localStorage.setItem('checkins', JSON.stringify(arr||[]));
+  }
+  function fmtDateKey(d) {
+    const y=d.getFullYear(); const m=(d.getMonth()+1).toString().padStart(2,'0'); const da=d.getDate().toString().padStart(2,'0');
+    return `${y}-${m}-${da}`;
+  }
+  function calcStreak(arr) {
+    const set = new Set(arr.map(x=>x.date));
+    let streak = 0; let d = new Date();
+    while (set.has(fmtDateKey(d))) { streak++; d = new Date(d.getFullYear(), d.getMonth(), d.getDate()-1); }
+    return streak;
+  }
+  function updateCheckinUi() {
+    if (!checkinStatus) return;
+    const arr = loadCheckins();
+    const total = arr.length;
+    const streak = calcStreak(arr);
+    const today = fmtDateKey(new Date());
+    const doneToday = arr.some(x=>x.date===today);
+    checkinStatus.textContent = doneToday ? `已打卡｜连续 ${streak} 天｜累计 ${total} 次`
+                                         : `未打卡｜连续 ${streak} 天｜累计 ${total} 次`;
+    if (checkinBtn) checkinBtn.disabled = doneToday;
+  }
+  function doCheckin(note) {
+    const arr = loadCheckins();
+    const today = fmtDateKey(new Date());
+    if (!arr.some(x=>x.date===today)) {
+      arr.push({
+        date: today,
+        distanceKm: state.totalDistanceKm || 0,
+        durationMin: state.startTime ? Math.round((Date.now()-state.startTime)/60000) : null,
+        note: note || ''
+      });
+      saveCheckins(arr);
+      updateCheckinUi();
+      addMsg('assistant', '已完成今日打卡，继续加油！');
+      speak('已完成今日打卡，继续加油');
+    }
+  }
+
   // Helpers
   function addMsg(role, text) {
     const el = document.createElement('div');
@@ -331,6 +383,44 @@
     u.onend = () => { state.speaking = false; };
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
+  }
+
+  // --------------- AI 目标建议 ---------------
+  function bmiFrom(heightCm, weightKg) {
+    const h = Number(heightCm)/100; const w = Number(weightKg);
+    if (!Number.isFinite(h) || !Number.isFinite(w) || h<=0 || w<=0) return null;
+    return w/(h*h);
+  }
+  function openAiGoalModal(open) {
+    if (!aiGoalModal) return;
+    aiGoalModal.style.display = open ? 'flex' : 'none';
+  }
+  async function fetchGoalAdviceViaLLM(payload) {
+    // 复用已配置的 LLM
+    const base = (openaiBaseInput?.value || '').trim();
+    const model = (modelNameInput?.value || '').trim();
+    const key = (openaiKeyInput?.value || '').trim();
+    const useCloud = useOpenAI.checked && (key || base);
+    const sys = '你是一名专业跑步教练与体能训练师。基于用户的身高、体重（BMI）、周跑量、可训练天数、跑步目的与PB等信息，给出中文目标建议：包含阶段目标（4-8周）、每周训练结构（质量课与轻松跑分配）、推荐配速区间与注意事项，控制在180字内。';
+    const user = `用户画像 JSON：${JSON.stringify(payload)}`;
+    if (useCloud) {
+      try {
+        const reply = await fetchOpenAI({ userText: user, run: state.run, apiKey: key, apiBase: base, model });
+        return reply;
+      } catch (e) { console.warn('Goal LLM error', e); }
+    }
+    // 规则兜底
+    const bmi = payload.bmi;
+    const purpose = payload.purpose || '健康';
+    const wk = Number(payload.weeklyKm)||0;
+    const days = Number(payload.daysPerWeek)||3;
+    const cues = [];
+    if (bmi && bmi>=27) cues.push('优先控强度，逐步增加跑量');
+    else if (bmi && bmi<18.5) cues.push('注意营养与力量训练');
+    if (wk<20) cues.push('先打基础，逐步加到每周20–30km');
+    if (days<3) cues.push('建议每周≥3天跑步');
+    const tip = cues.join('，') || '循序渐进，注意恢复';
+    return `${purpose}目标建议：4–6周阶段。每周${days}天，1次质量课（节奏或间歇）+ 2–3次轻松跑；周跑量约${Math.max(15,Math.min(45,wk+10))}km；训练配速以可对话强度为主，质量课略快。${tip}。`;
   }
 
   function initRecognition() {
@@ -785,6 +875,28 @@
   });
   clearChatBtn.addEventListener('click', () => { chatEl.innerHTML = ''; });
 
+  // Events: goals & check-in
+  if (aiGoalBtn) aiGoalBtn.addEventListener('click', ()=> openAiGoalModal(true));
+  if (aiGoalCancel) aiGoalCancel.addEventListener('click', ()=> openAiGoalModal(false));
+  if (aiGoalForm) aiGoalForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const h = Number(document.getElementById('qHeight')?.value);
+    const w = Number(document.getElementById('qWeight')?.value);
+    const purpose = (document.getElementById('qPurpose')?.value||'').trim();
+    const pb = (document.getElementById('qPB')?.value||'').trim();
+    const weeklyKm = Number(document.getElementById('qWeeklyKm')?.value);
+    const daysPerWeek = Number(document.getElementById('qDaysPerWeek')?.value);
+    const bmi = bmiFrom(h, w);
+    const payload = { heightCm:h, weightKg:w, bmi: bmi?Number(bmi.toFixed(1)):null, purpose, pb, weeklyKm, daysPerWeek,
+      age: state.run?.age || null, gender: state.run?.gender || null };
+    addMsg('assistant', '正在生成目标建议…');
+    const advice = await fetchGoalAdviceViaLLM(payload);
+    openAiGoalModal(false);
+    if (advice) { addMsg('assistant', advice); speak(advice); }
+    else { addMsg('assistant', '暂时无法生成建议，请稍后再试。'); }
+  });
+  if (checkinBtn) checkinBtn.addEventListener('click', ()=> doCheckin('用户手动打卡'));
+
   // Events: running controls & form
   runForm.addEventListener('change', (e)=>{
     // Mode toggle show/hide destination field
@@ -885,6 +997,7 @@
   updateUi();
   initMapIfNeeded();
   addMsg('assistant', '你好！点击“开始跑步”后，我将实时播报当前位置、即时/平均配速，并在目的地模式下提示剩余距离。也可随时向我发问。');
+  updateCheckinUi();
 
   // Save LLM cfg (key not stored)
   function saveCfg() {
