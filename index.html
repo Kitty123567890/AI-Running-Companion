@@ -98,6 +98,8 @@
           <input type="checkbox" id="voiceToggle" checked />
           <span>语音教练</span>
         </label>
+          <!-- Medal system entry button -->
+          <button type="button" id="medalsBtn" title="我的奖章" style="margin-left:8px;">🏅 奖章</button>
         <label class="toggle">
           <input type="checkbox" id="useOpenAI" />
           <span>使用兼容 OpenAI 的接口</span>
@@ -162,6 +164,7 @@
             <button type="button" id="startRun">开始跑步</button>
             <button type="button" id="stopRun" disabled>停止</button>
             <button type="button" id="clearRun">清空</button>
+            <button type="button" id="shareRunBtn">分享</button>
           </div>
         </form>
         <div id="runSummary" class="run-summary">
@@ -196,6 +199,7 @@
           <label>今日打卡</label>
           <div class="actions">
             <button type="button" id="checkinBtn">今日打卡</button>
+            <button type="button" id="shareCheckinBtn">分享</button>
             <span id="checkinStatus" class="tip"></span>
           </div>
         </div>
@@ -250,6 +254,8 @@
 
     <script src="public/energy-system.js"></script>
     <script src="public/analysis.js"></script>
+    <script src="public/medalSystem.js"></script>
+    <script src="public/shareSystem.js"></script>
     <script src="public/app.js"></script>
   </body>
 </html>
