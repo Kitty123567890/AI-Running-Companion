@@ -1,0 +1,16 @@
+{
+  "name": "ui-trae",
+  "version": "1.0.0",
+  "description": "一款情感化的AI跑步伙伴应用，核心设计理念是**沉浸感、情感化、无边界**。",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^7.1.12"
+  }
+}

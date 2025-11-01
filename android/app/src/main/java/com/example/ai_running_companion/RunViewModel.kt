@@ -45,7 +45,12 @@ data class RunUiState(
   val routePlan: List<LatLng> = emptyList(),
   val messages: List<ChatMsg> = emptyList(),
   val inputText: String = "",
-  val recognizing: Boolean = false
+  val recognizing: Boolean = false,
+  // 元气值相关
+  val vitalityScore: Double = 0.0,
+  val vitalityLevel: Int = 1,
+  val hartForm: VitalitySystem.HartForm? = null,
+  val consecutiveDays: Int = 0
 )
 
 class RunViewModel : ViewModel() {
@@ -64,6 +69,7 @@ class RunViewModel : ViewModel() {
   private val points = mutableListOf<Point>()
 
   private var speechRecognizer: SpeechRecognizer? = null
+  private var vitalitySystem: VitalitySystem? = null
 
   fun setVoiceEnabled(v: Boolean) { voiceEnabled = v; _state.value = _state.value.copy(voiceEnabled = v) }
   fun setUseLLM(v: Boolean) { _state.value = _state.value.copy(useLLM = v) }
@@ -75,6 +81,35 @@ class RunViewModel : ViewModel() {
   fun setGender(s: String) { _state.value = _state.value.copy(gender = s) }
   fun setAge(s: String) { _state.value = _state.value.copy(age = s) }
   fun setInputText(s: String) { _state.value = _state.value.copy(inputText = s) }
+
+  /**
+   * 初始化元气值系统
+   */
+  fun initVitalitySystem(context: Context) {
+    vitalitySystem = VitalitySystem(context)
+    updateVitalityState()
+  }
+
+  /**
+   * 更新元气值相关的UI状态
+   */
+  private fun updateVitalityState() {
+    vitalitySystem?.let { vs ->
+      _state.value = _state.value.copy(
+        vitalityScore = vs.getCurrentVitality(),
+        vitalityLevel = vs.getCurrentLevel(),
+        hartForm = vs.getCurrentHartForm(),
+        consecutiveDays = vs.getConsecutiveDays()
+      )
+    }
+  }
+
+  /**
+   * 获取所有哈特形态（用于形态展示页面）
+   */
+  fun getAllHartForms(): List<VitalitySystem.HartForm> {
+    return vitalitySystem?.getAllHartForms() ?: emptyList()
+  }
 
   fun clear() {
     points.clear()
@@ -125,6 +160,50 @@ class RunViewModel : ViewModel() {
     fused?.removeLocationUpdates(callback!!)
     _state.value = _state.value.copy(running = false)
     val el = (System.currentTimeMillis() - (startTime ?: System.currentTimeMillis())) / 1000
+
+    // 计算并添加元气值
+    vitalitySystem?.let { vs ->
+      val durationMin = el.toDouble() / 60.0
+      val distanceKm = _state.value.totalDistanceKm
+
+      // 解析平均配速
+      val avgPaceVal: Double? = try {
+        val paceStr = _state.value.avgPaceLabel
+        if (paceStr != "-" && paceStr.contains("分")) {
+          val parts = paceStr.split("分", "秒")
+          if (parts.size >= 2) {
+            val min = parts[0].toDoubleOrNull() ?: 0.0
+            val sec = parts[1].toDoubleOrNull() ?: 0.0
+            min + (sec / 60.0)
+          } else null
+        } else null
+      } catch (e: Exception) {
+        null
+      }
+
+      // 计算元气值增量
+      val vitalityGain = vs.calculateVitalityGain(distanceKm, durationMin, avgPaceVal)
+      val newVitality = vs.addVitality(vitalityGain)
+      vs.updateConsecutiveDays()
+
+      // 更新UI状态
+      updateVitalityState()
+
+      // 添加元气值提示消息
+      val oldLevel = _state.value.vitalityLevel
+      val newLevel = vs.getCurrentLevel()
+      val levelUpMsg = if (newLevel > oldLevel) {
+        "\n\n恭喜！哈特进化到了 ${vs.getCurrentHartForm().name}！"
+      } else ""
+
+      val vitalityMsg = "本次跑步获得 ${String.format("%.1f", vitalityGain)} 点元气值！" +
+                       "\n当前元气值：${String.format("%.1f", newVitality)} 分 (Lv.$newLevel)" +
+                       levelUpMsg
+
+      addMsg("assistant", vitalityMsg)
+      if (voiceEnabled) speak(vitalityMsg)
+    }
+
     // Simple finish tip using Coach
     val tips = Coach.analyze(
       Coach.RunSummary(

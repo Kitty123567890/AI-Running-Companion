@@ -1,0 +1,63 @@
+.glass-card {
+    background: rgba(42, 42, 42, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-record {
+    transition: all 0.3s ease;
+}
+
+.chat-record:hover {
+    border-color: rgba(255, 107, 139, 0.5);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 107, 139, 0.5);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 107, 139, 0.7);
+}
+
+/* 动画效果 */
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* 响应式调整 */
+@media (max-width: 375px) {
+    .chat-record h2 {
+        font-size: 0.9rem;
+    }
+    .chat-record p {
+        font-size: 0.8rem;
+    }
+    header h1 {
+        font-size: 1.2rem;
+    }
+}
+
+@media (min-width: 768px) {
+    main {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+}

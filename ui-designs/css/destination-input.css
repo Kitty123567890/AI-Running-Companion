@@ -1,0 +1,8 @@
+@layer utilities {
+    .content-auto { content-visibility: auto; }
+    .backdrop-blur-xl { backdrop-filter: blur(20px); }
+    .glass-card { background: rgba(42, 42, 42, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .text-shadow { text-shadow: 0 0 8px rgba(255, 107, 139, 0.6); }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}

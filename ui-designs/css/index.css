@@ -1,0 +1,17 @@
+@layer utilities {
+    .content-auto { content-visibility: auto; }
+    .backdrop-blur-xl { backdrop-filter: blur(20px); }
+    .text-shadow { text-shadow: 0 0 8px rgba(255, 107, 139, 0.8); }
+    .animate-heartbeat { animation: heartbeat 0.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1); }
+    .pulse-glow { animation: pulseGlow 2s infinite ease-in-out; }
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 107, 139, 0.4); }
+    50% { box-shadow: 0 0 40px rgba(255, 107, 139, 0.8); }
+}

@@ -1,0 +1,25 @@
+@layer utilities {
+    .content-auto { content-visibility: auto; }
+    .backdrop-blur-xl { backdrop-filter: blur(20px); }
+    .text-shadow { text-shadow: 0 0 8px rgba(255, 107, 139, 0.8); }
+    .hart-beat { animation: beat 1.2s infinite cubic-bezier(0.215, 0.61, 0.355, 1); }
+    .animate-heartbeat { animation: heartbeat 0.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1); }
+    .glass-card {
+        background: rgba(42, 42, 42, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+
+@keyframes beat {
+    0% { transform: scale(1); }
+    14% { transform: scale(1.1); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.1); }
+    70% { transform: scale(1); }
+}

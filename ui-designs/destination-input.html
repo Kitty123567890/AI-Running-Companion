@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>目的地输入 - 元气跑伴</title>
+    <link rel="stylesheet" href="css/destination-input.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="js/tailwind-config.js"></script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto { content-visibility: auto; }
+            .backdrop-blur-xl { backdrop-filter: blur(20px); }
+            .glass-card { background: rgba(42, 42, 42, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+            .text-shadow { text-shadow: 0 0 8px rgba(255, 107, 139, 0.6); }
+            .scrollbar-hide::-webkit-scrollbar { display: none; }
+            .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        }
+    </style>
+</head>
+<body class="bg-background text-textPrimary h-screen flex flex-col overflow-hidden">
+    <!-- 顶部导航 -->
+    <header class="flex-shrink-0 p-6">
+        <div class="flex justify-between items-center">
+            <button id="backButton" class="p-2 rounded-full hover:bg-white/10 transition-colors">
+                <i class="fa fa-arrow-left text-xl"></i>
+            </button>
+            <h1 class="text-2xl font-bold">输入目的地</h1>
+            <div class="w-10"></div> <!-- 占位元素 -->
+        </div>
+    </header>
+
+    <!-- 搜索区域 -->
+    <div class="flex-shrink-0 px-6 pb-4">
+        <div class="relative glass-card rounded-xl p-3">
+            <i class="fa fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-textTertiary"></i>
+            <input type="text" placeholder="搜索目的地或地址" class="w-full bg-transparent border-none outline-none pl-10 pr-4 py-2 text-lg placeholder-textTertiary">
+        </div>
+    </div>
+
+    <!-- 主要内容区 -->
+    <main class="flex-1 overflow-y-auto px-6">
+        <!-- AI推荐标签 -->
+        <div class="mb-6">
+            <h2 class="text-textTertiary text-sm mb-3">AI智能推荐</h2>
+            <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                <span class="px-4 py-2 bg-primary/20 text-primary rounded-full text-sm whitespace-nowrap cursor-pointer hover:bg-primary/30 transition-colors">热门路线</span>
+                <span class="px-4 py-2 bg-white/10 text-textSecondary rounded-full text-sm whitespace-nowrap cursor-pointer hover:bg-white/20 transition-colors">公园绿地</span>
+                <span class="px-4 py-2 bg-white/10 text-textSecondary rounded-full text-sm whitespace-nowrap cursor-pointer hover:bg-white/20 transition-colors">城市地标</span>
+                <span class="px-4 py-2 bg-white/10 text-textSecondary rounded-full text-sm whitespace-nowrap cursor-pointer hover:bg-white/20 transition-colors">河滨步道</span>
+                <span class="px-4 py-2 bg-white/10 text-textSecondary rounded-full text-sm whitespace-nowrap cursor-pointer hover:bg-white/20 transition-colors">高校校园</span>
+            </div>
+        </div>
+
+        <!-- 推荐地点列表 -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-4">推荐目的地</h2>
+            <div class="space-y-3">
+                <!-- 地点卡片1 -->
+                <div class="glass-card rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors">
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 bg-secondary/20 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
+                            <i class="fa fa-map-marker text-secondary text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-lg font-semibold mb-1 truncate">中央公园</h3>
+                            <p class="text-textSecondary text-sm mb-1 truncate">北京市朝阳区朝阳公园南路1号</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-primary text-sm">距离: 3.2公里</span>
+                                <span class="text-textTertiary text-sm">预计: 28分钟</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 地点卡片2 -->
+                <div class="glass-card rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors">
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 bg-secondary/20 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
+                            <i class="fa fa-map-marker text-secondary text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-lg font-semibold mb-1 truncate">奥林匹克森林公园</h3>
+                            <p class="text-textSecondary text-sm mb-1 truncate">北京市朝阳区安立路</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-primary text-sm">距离: 5.8公里</span>
+                                <span class="text-textTertiary text-sm">预计: 52分钟</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 地点卡片3 -->
+                <div class="glass-card rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors">
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 bg-secondary/20 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
+                            <i class="fa fa-map-marker text-secondary text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-lg font-semibold mb-1 truncate">朝阳公园</h3>
+                            <p class="text-textSecondary text-sm mb-1 truncate">北京市朝阳区农展馆南路1号</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-primary text-sm">距离: 2.5公里</span>
+                                <span class="text-textTertiary text-sm">预计: 22分钟</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 地点卡片4 -->
+                <div class="glass-card rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors">
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 bg-secondary/20 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
+                            <i class="fa fa-map-marker text-secondary text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-lg font-semibold mb-1 truncate">三里屯太古里</h3>
+                            <p class="text-textSecondary text-sm mb-1 truncate">北京市朝阳区三里屯路19号</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-primary text-sm">距离: 4.1公里</span>
+                                <span class="text-textTertiary text-sm">预计: 36分钟</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 历史记录 -->
+        <div>
+            <h2 class="text-xl font-bold mb-4">历史记录</h2>
+            <div class="space-y-3">
+                <!-- 历史记录1 -->
+                <div class="glass-card rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors">
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
+                            <i class="fa fa-history text-textSecondary text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-lg font-semibold mb-1 truncate">北海公园</h3>
+                            <p class="text-textSecondary text-sm mb-1 truncate">北京市西城区文津街1号</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-primary text-sm">距离: 7.3公里</span>
+                                <span class="text-textTertiary text-sm">昨天</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 历史记录2 -->
+                <div class="glass-card rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors">
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
+                            <i class="fa fa-history text-textSecondary text-xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-lg font-semibold mb-1 truncate">玉渊潭公园</h3>
+                            <p class="text-textSecondary text-sm mb-1 truncate">北京市海淀区西三环中路10号</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-primary text-sm">距离: 9.5公里</span>
+                                <span class="text-textTertiary text-sm">3天前</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部操作栏 -->
+    <footer class="flex-shrink-0 p-6 pt-4">
+        <button id="startNavButton" class="w-full glass-card bg-primary hover:bg-primary/90 text-white font-bold rounded-xl py-4 text-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]">
+            开始导航
+        </button>
+    </footer>
+
+    <!-- 脚本 -->
+    <script src="js/destination-input.js"></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>对话详情 - 元气跑伴</title>
+    <link rel="stylesheet" href="css/chat-history.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="js/tailwind-config.js"></script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto { content-visibility: auto; }
+            .message-bubble-left {
+                border-radius: 18px 18px 18px 4px;
+                background: rgba(74, 144, 226, 0.2);
+            }
+            .message-bubble-right {
+                border-radius: 18px 18px 4px 18px;
+                background: rgba(255, 107, 139, 0.2);
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-textPrimary min-h-screen flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="py-4 px-6 glass-card backdrop-blur-xl border-b border-white/10">
+        <div class="flex justify-between items-center">
+            <button id="backButton" class="text-textSecondary hover:text-white transition-colors">
+                <i class="fa fa-arrow-left mr-2"></i>返回
+            </button>
+            <h1 class="text-xl font-semibold">对话详情</h1>
+            <div class="w-10"></div> <!-- 占位元素，保持标题居中 -->
+        </div>
+    </header>
+
+    <!-- 内容区域 -->
+    <main class="flex-1 overflow-y-auto p-6">
+        <!-- 对话详情头部 -->
+        <div class="glass-card rounded-xl p-4 mb-6">
+            <h2 class="text-lg font-semibold mb-1">赛前准备建议</h2>
+            <p class="text-sm text-textTertiary">2023-11-25 08:30</p>
+        </div>
+
+        <!-- 对话内容 -->
+        <div class="space-y-6">
+            <!-- 系统消息 -->
+            <div class="flex items-start">
+                <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mr-3">
+                    <i class="fa fa-robot text-primary"></i>
+                </div>
+                <div class="message-bubble-left max-w-[80%] p-3">
+                    <p class="text-sm">明天有马拉松比赛，需要做好赛前准备。建议你今天进行轻度拉伸，保证充足睡眠，赛前2小时进食易消化的碳水化合物。</p>
+                </div>
+            </div>
+
+            <!-- 用户消息 -->
+            <div class="flex items-start justify-end">
+                <div class="message-bubble-right max-w-[80%] p-3">
+                    <p class="text-sm">谢谢！那比赛当天需要提前多久到达赛场？</p>
+                </div>
+            </div>
+
+            <!-- 系统消息 -->
+            <div class="flex items-start">
+                <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mr-3">
+                    <i class="fa fa-robot text-primary"></i>
+                </div>
+                <div class="message-bubble-left max-w-[80%] p-3">
+                    <p class="text-sm">建议提前1.5-2小时到达，以便完成检录、存包和热身。记得穿舒适的跑鞋，佩戴号码布，并根据天气情况调整服装。</p>
+                </div>
+            </div>
+
+            <!-- 系统消息 -->
+            <div class="flex items-start">
+                <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mr-3">
+                    <i class="fa fa-robot text-primary"></i>
+                </div>
+                <div class="message-bubble-left max-w-[80%] p-3">
+                    <p class="text-sm">比赛中注意保持均匀呼吸，前5公里不要冲太快。每5公里补充一次水分，感觉不适立即减速并向医疗站求助。</p>
+                </div>
+            </div>
+
+            <!-- 用户消息 -->
+            <div class="flex items-start justify-end">
+                <div class="message-bubble-right max-w-[80%] p-3">
+                    <p class="text-sm">明白了，谢谢你的建议！</p>
+                </div>
+            </div>
+
+            <!-- 系统消息 -->
+            <div class="flex items-start">
+                <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mr-3">
+                    <i class="fa fa-robot text-primary"></i>
+                </div>
+                <div class="message-bubble-left max-w-[80%] p-3">
+                    <p class="text-sm">不客气！祝你比赛顺利，取得好成绩！赛后记得进行冷身和拉伸，补充蛋白质和碳水化合物帮助恢复。</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 哈特形象 - 页面右下角悬浮 -->
+    <div class="fixed bottom-24 right-6 w-16 h-16 animate-float">
+        <!-- 哈特形象 - Lv.4 常态 -->
+        <svg viewBox="0 0 110 100" class="w-full h-full">
+            <!-- 哈特主体 -->
+            <path d="M55,10 C75,10 90,30 90,50 C90,75 55,95 55,95 C55,95 20,75 20,50 C20,30 35,10 55,10 Z" fill="url(#hart-gradient)"/>
+            <!-- 眼睛 -->
+            <circle cx="40" cy="40" r="3" fill="white"/>
+            <circle cx="70" cy="40" r="3" fill="white"/>
+            <!-- 高光 -->
+            <circle cx="41" cy="39" r="1.5" fill="white" opacity="0.8"/>
+            <circle cx="71" cy="39" r="1.5" fill="white" opacity="0.8"/>
+            <!-- 渐变定义 -->
+            <defs>
+                <radialGradient id="hart-gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                    <stop offset="0%" stop-color="#FF6B8B"/>
+                    <stop offset="100%" stop-color="#FF2D55"/>
+                </radialGradient>
+            </defs>
+        </svg>
+    </div>
+
+    <!-- 脚本 -->
+    <script src="js/chat-detail.js"></script>
+</body>
+</html>

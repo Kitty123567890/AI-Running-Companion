@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>目标管理 - 元气跑伴</title>
+    <link rel="stylesheet" href="css/goal-sheet.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="js/tailwind-config.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B8B',
+                        secondary: '#4A90E2',
+                        hartLevel5: '#FF2D55',
+                        hartLevel4: '#FF3B30',
+                        hartLevel3: '#C7233A',
+                        hartLevel2: '#8B1A1A',
+                        hartLevel1: '#4A2424',
+                        hartLevel0: '#2C2C2C',
+                        background: '#000000',
+                        cardBg: 'rgba(42, 42, 42, 0.7)',
+                        textPrimary: '#FFFFFF',
+                        textSecondary: '#CCCCCC',
+                        textTertiary: '#999999'
+                    },
+                    fontFamily: {
+                        sans: ['PingFang SC', 'HarmonyOS Sans SC', 'sans-serif'],
+                        display: ['SF Pro Display', 'Inter', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'glow': '0 0 30px rgba(255, 107, 139, 0.5)',
+                        'glow-blue': '0 0 30px rgba(74, 144, 226, 0.5)'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'heartbeat': 'heartbeat 0.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1)'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        heartbeat: {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '40%': { transform: 'scale(1.03)' },
+                            '50%': { transform: 'scale(1)' },
+                            '60%': { transform: 'scale(1.03)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto { content-visibility: auto; }
+            .backdrop-blur-xl { backdrop-filter: blur(20px); }
+            .text-shadow { text-shadow: 0 0 8px rgba(255, 107, 139, 0.8); }
+            .glass-card {
+                background: rgba(42, 42, 42, 0.7);
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .progress-ring-circle {
+                transition: stroke-dashoffset 0.35s;
+                transform: rotate(-90deg);
+                transform-origin: 50% 50%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background text-textPrimary min-h-screen flex flex-col">
+    <!-- 目标管理容器 -->
+    <div class="min-h-screen flex flex-col px-4 sm:px-6 lg:px-8 max-w-[540px] mx-auto">
+        <!-- 顶部导航 -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold">目标管理</h1>
+            <button id="closeGoalSheet" class="p-2 rounded-full hover:bg-white/10 transition-colors">
+                <i class="fa fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- 当前目标 -->
+        <div class="glass-card rounded-2xl p-6 mb-8">
+            <div class="flex flex-col md:flex-row items-center">
+                <!-- 进度圆环 -->
+                <div class="relative w-[160px] h-[160px] sm:w-[200px] sm:h-[200px] mb-6 md:mb-0 md:mr-8">
+                    <svg class="w-full h-full" viewBox="0 0 100 100">
+                        <!-- 背景圆环 -->
+                        <circle
+                            cx="50"
+                            cy="50"
+                            r="45"
+                            fill="none"
+                            stroke="rgba(255, 255, 255, 0.1)"
+                            stroke-width="8"
+                        />
+                        <!-- 进度圆环 -->
+                        <circle
+                            class="progress-ring-circle"
+                            cx="50"
+                            cy="50"
+                            r="45"
+                            fill="none"
+                            stroke="url(#progress-gradient)"
+                            stroke-width="8"
+                            stroke-dasharray="283"
+                            stroke-dashoffset="113"
+                            stroke-linecap="round"
+                        />
+                        <!-- 渐变定义 -->
+                        <defs>
+                            <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#FF6B8B" />
+                                <stop offset="100%" stop-color="#4A90E2" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <!-- 进度文字 -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="text-4xl font-bold">40%</span>
+                        <span class="text-sm text-textTertiary">已完成</span>
+                    </div>
+                </div>
+
+                <!-- 目标信息 -->
+                <div class="text-center md:text-left">
+                    <h2 class="text-xl font-semibold mb-2">本周跑步5公里</h2>
+                    <p class="text-textSecondary mb-4">已完成2.0/5.0公里</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="glass-card text-xs px-3 py-1 rounded-full bg-primary/20 text-primary">距离目标</span>
+                        <span class="glass-card text-xs px-3 py-1 rounded-full">剩余3天</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI智能推荐 -->
+        <div class="mb-8">
+            <h2 class="text-lg font-semibold mb-4">AI智能推荐</h2>
+            <div class="space-y-4">
+                <!-- 推荐目标1 -->
+                <div class="glass-card rounded-xl p-4 hover:border-primary/50 border border-transparent transition-colors cursor-pointer">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-medium">轻松晨跑3公里</h3>
+                            <p class="text-sm text-textTertiary">适合你的当前状态</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-lg font-bold">3.0公里</span>
+                            <p class="text-xs text-textTertiary">难度：简单</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 推荐目标2 -->
+                <div class="glass-card rounded-xl p-4 hover:border-primary/50 border border-transparent transition-colors cursor-pointer">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-medium">每周跑步3次</h3>
+                            <p class="text-sm text-textTertiary">培养跑步习惯</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-lg font-bold">3次/周</span>
+                            <p class="text-xs text-textTertiary">难度：中等</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 推荐目标3 -->
+                <div class="glass-card rounded-xl p-4 hover:border-primary/50 border border-transparent transition-colors cursor-pointer">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-medium">提升配速至6分钟/公里</h3>
+                            <p class="text-sm text-textTertiary">挑战个人记录</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-lg font-bold">6'00"/公里</span>
+                            <p class="text-xs text-textTertiary">难度：较难</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速创建目标 -->
+        <div class="flex-1">
+            <h2 class="text-[clamp(1.25rem,3vw,1.5rem)] font-semibold mb-4">创建新目标</h2>
+
+            <!-- 目标类型标签 -->
+            <div class="flex border-b border-white/10 mb-6">
+                <button class="py-2 px-4 text-primary border-b-2 border-primary font-medium">距离</button>
+                <button class="py-2 px-4 text-textTertiary hover:text-white transition-colors">时长</button>
+                <button class="py-2 px-4 text-textTertiary hover:text-white transition-colors">频次</button>
+                <button class="py-2 px-4 text-textTertiary hover:text-white transition-colors">配速</button>
+            </div>
+
+            <!-- 距离目标表单 -->
+            <div class="space-y-8">
+                <div>
+                    <label class="block text-sm text-textTertiary mb-2">目标距离 (公里)</label>
+                    <input type="number"
+                           min="0.5"
+                           max="100"
+                           step="0.5"
+                           value="5"
+                           class="w-full glass-card rounded-xl p-4 bg-white/5 border border-white/10 focus:border-primary focus:outline-none"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm text-textTertiary mb-2">目标期限</label>
+                    <select class="w-full glass-card rounded-xl p-4 bg-white/5 border border-white/10 focus:border-primary focus:outline-none">
+                        <option>1天内</option>
+                        <option selected>1周内</option>
+                        <option>2周内</option>
+                        <option>1个月内</option>
+                        <option>自定义...</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-textTertiary mb-2">难度评估</label>
+                    <div class="glass-card rounded-xl p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm">较简单</span>
+                            <span class="text-sm">有挑战</span>
+                        </div>
+                        <div class="w-full bg-white/10 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-primary to-secondary h-2 rounded-full" style="width: 60%"></div>
+                        </div>
+                        <p class="text-xs text-textTertiary mt-2">基于你的历史数据，完成此目标有60%的可能性</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部操作按钮 -->
+        <div class="mt-8">
+            <button id="saveGoal" class="w-full glass-card bg-primary hover:bg-primary/90 rounded-xl py-4 text-white font-medium shadow-glow transition-all duration-300 transform hover:scale-[1.02]">
+                保存目标
+            </button>
+        </div>
+    </div>
+
+    <!-- API占位符脚本 -->
+    <script>
+        // 后端API接口示例
+        const API_ENDPOINTS = {
+            getCurrentGoal: '/api/goals/current',
+            getGoalRecommendations: '/api/goals/recommendations',
+            createGoal: '/api/goals',
+            updateGoal: '/api/goals/:id',
+            deleteGoal: '/api/goals/:id'
+        };
+
+        // 关闭目标管理面板
+        document.getElementById('closeGoalSheet').addEventListener('click', () => {
+            window.location.href = 'home.html';
+        });
+
+        // 保存目标按钮事件
+        document.getElementById('saveGoal').addEventListener('click', async () => {
+            const distance = document.querySelector('input[type="number"]').value;
+            const deadline = document.querySelector('select').value;
+
+            try {
+                console.log('Saving goal:', { distance, deadline });
+                // 实际项目中替换为真实API调用
+                // const response = await fetch(API_ENDPOINTS.createGoal, {
+                //     method: 'POST',
+                //     headers: { 'Content-Type': 'application/json' },
+                //     body: JSON.stringify({ type: 'distance', value: distance, deadline })
+                // });
+                // if (response.ok) {
+                //     alert('目标创建成功！');
+                //     window.location.href = 'home.html';
+                // }
+                alert('目标已保存！\n\n距离: ' + distance + '公里\n期限: ' + deadline);
+            } catch (error) {
+                console.error('Failed to save goal:', error);
+                alert('保存目标失败，请重试');
+            }
+        });
+
+        // 模拟获取目标数据
+        async function fetchGoalData() {
+            try {
+                // 实际项目中替换为真实API调用
+                console.log('Fetching current goal from:', API_ENDPOINTS.getCurrentGoal);
+                // const response = await fetch(API_ENDPOINTS.getCurrentGoal);
+                // const goal = await response.json();
+                // updateGoalUI(goal);
+            } catch (error) {
+                console.error('Failed to fetch goal data:', error);
+            }
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchGoalData();
+        });
+    </script>
+</body>
+</html>
