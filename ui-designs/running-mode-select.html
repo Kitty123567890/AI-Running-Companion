@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跑步模式选择 - 元气跑伴</title>
+    <link rel="stylesheet" href="css/running-mode-select.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="js/tailwind-config.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B8B',
+                        secondary: '#4A90E2',
+                        background: '#000000',
+                        cardBg: 'rgba(42, 42, 42, 0.7)',
+                        textPrimary: '#FFFFFF',
+                        textSecondary: '#CCCCCC'
+                    },
+                    fontFamily: {
+                        sans: ['PingFang SC', 'HarmonyOS Sans SC', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'glow': '0 0 30px rgba(255, 107, 139, 0.5)',
+                        'glow-blue': '0 0 30px rgba(74, 144, 226, 0.5)'
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'particle': 'particle 8s infinite ease-in-out'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        particle: {
+                            '0%': { transform: 'translate(0, 0) rotate(0deg)' },
+                            '100%': { transform: 'translate(100px, -100px) rotate(360deg)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto { content-visibility: auto; }
+            .backdrop-blur-xl { backdrop-filter: blur(20px); }
+            .glass-card { background: rgba(42, 42, 42, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+            .particle-bg { position: absolute; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+            .particle { position: absolute; border-radius: 50%; background: rgba(255, 107, 139, 0.3); }
+            .map-line-bg { background-image: radial-gradient(circle, rgba(74, 144, 226, 0.3) 1px, transparent 1px); background-size: 20px 20px; }
+        }
+    </style>
+</head>
+<body class="bg-background text-textPrimary min-h-screen flex flex-col overflow-hidden">
+    <!-- 跑步模式选择容器 -->
+    <div class="h-screen flex flex-col p-6">
+        <!-- 顶部导航 -->
+        <div class="flex justify-between items-center mb-12">
+            <button id="backToHome" class="p-2 rounded-full hover:bg-white/10 transition-colors">
+                <i class="fa fa-arrow-left text-xl"></i>
+            </button>
+            <h1 class="text-2xl font-bold">选择跑步模式</h1>
+            <div class="w-10"></div> <!-- 占位元素，保持标题居中 -->
+        </div>
+
+        <!-- 模式选择卡片区域 -->
+        <div class="flex-1 flex flex-col items-center justify-center gap-8">
+            <!-- 自由跑模式 -->
+            <div class="relative w-full max-w-md glass-card rounded-2xl p-8 cursor-pointer group overflow-hidden transition-all duration-300 hover:shadow-glow hover:scale-[1.02]">
+                <!-- 粒子背景 -->
+                <div class="particle-bg absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    <div class="particle w-3 h-3 animate-particle" style="top: 20%; left: 10%; animation-delay: 0s;"></div>
+                    <div class="particle w-2 h-2 animate-particle" style="top: 40%; left: 80%; animation-delay: 1s;"></div>
+                    <div class="particle w-4 h-4 animate-particle" style="top: 70%; left: 30%; animation-delay: 2s;"></div>
+                    <div class="particle w-3 h-3 animate-particle" style="top: 30%; left: 60%; animation-delay: 3s;"></div>
+                    <div class="particle w-2 h-2 animate-particle" style="top: 80%; left: 90%; animation-delay: 4s;"></div>
+                </div>
+                <div class="relative z-10">
+                    <div class="w-16 h-16 bg-primary/20 rounded-xl flex items-center justify-center mb-6">
+                        <i class="fa fa-play-circle text-primary text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">自由跑</h2>
+                    <p class="text-textSecondary mb-6">无需设置目的地，立即开始跑步，享受运动乐趣</p>
+                    <div class="flex items-center text-primary font-medium">
+                        <span>开始跑步</span>
+                        <i class="fa fa-arrow-right ml-2 transition-transform group-hover:translate-x-1"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 目的地跑模式 -->
+            <div class="relative w-full max-w-md glass-card rounded-2xl p-8 cursor-pointer group overflow-hidden transition-all duration-300 hover:shadow-glow-blue hover:scale-[1.02]">
+                <!-- 地图线条背景 -->
+                <div class="absolute inset-0 bg-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 map-line-bg"></div>
+                <div class="relative z-10">
+                    <div class="w-16 h-16 bg-secondary/20 rounded-xl flex items-center justify-center mb-6">
+                        <i class="fa fa-map-marker text-secondary text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">目的地跑</h2>
+                    <p class="text-textSecondary mb-6">设置目标地点，获取导航指引，挑战自我极限</p>
+                    <div class="flex items-center text-secondary font-medium">
+                        <span>选择目的地</span>
+                        <i class="fa fa-arrow-right ml-2 transition-transform group-hover:translate-x-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 脚本 -->
+    <script>
+        // 返回首页
+        document.getElementById('backToHome').addEventListener('click', () => {
+            window.location.href = 'home.html';
+        });
+
+        // 自由跑模式点击事件
+        document.querySelector('.particle-bg').parentElement.addEventListener('click', () => {
+            // 跳转到跑步模式页面
+            window.location.href = 'running-mode.html';
+        });
+
+        // 目的地跑模式点击事件
+        document.querySelector('.map-line-bg').parentElement.addEventListener('click', () => {
+            // 跳转到目的地输入页面
+            window.location.href = 'destination-input.html';
+        });
+    </script>
+</body>
+</html>

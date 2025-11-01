@@ -1,0 +1,70 @@
+@layer utilities {
+    .content-auto { content-visibility: auto; }
+    .text-shadow { text-shadow: 0 0 8px rgba(255, 107, 139, 0.6); }
+    .card-shadow { box-shadow: 0 0 20px rgba(255, 107, 139, 0.3); }
+}
+
+/* 基础样式 */
+body {
+    background-color: theme('colors.background');
+}
+
+/* 卡片样式 */
+#shareCard {
+    transform: rotate(-2deg);
+    transition: transform 0.3s ease;
+}
+
+#shareCard:hover {
+    transform: rotate(0deg) scale(1.02);
+}
+
+/* 哈特形象动画 */
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+.animate-heartbeat {
+    animation: heartbeat 0.8s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    40% { transform: scale(1.05); }
+    50% { transform: scale(1); }
+    60% { transform: scale(1.05); }
+}
+
+/* 分享按钮样式 */
+footer button {
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+footer button:hover {
+    transform: scale(1.1);
+}
+
+footer button:active {
+    transform: scale(0.95);
+}
+
+/* 响应式调整 */
+@media (max-width: 360px) {
+    #shareCard {
+        transform: rotate(0deg);
+    }
+
+    .grid-cols-3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid-cols-3 > div:last-child {
+        grid-column: span 2;
+        margin-top: 0.5rem;
+    }
+}

@@ -1,0 +1,99 @@
+/* 历史记录 & 成就墙页面样式 */
+
+/* 基础样式扩展 */
+@layer utilities {
+    .content-auto { content-visibility: auto; }
+    .text-shadow { text-shadow: 0 0 8px rgba(255, 107, 139, 0.6); }
+    .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); }
+    .achievement-unlocked { filter: grayscale(0); border-color: rgba(255, 107, 139, 0.5); transition: all 0.3s ease; }
+    .achievement-locked { filter: grayscale(1); border-color: rgba(255, 255, 255, 0.1); opacity: 0.7; transition: all 0.3s ease; }
+    .achievement-unlocked:hover { box-shadow: 0 0 15px rgba(255, 107, 139, 0.4); }
+    .achievement-locked:hover { opacity: 0.9; }
+}
+
+/* 滚动条样式 */
+main::-webkit-scrollbar {
+    width: 4px;
+}
+main::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+main::-webkit-scrollbar-thumb {
+    background: rgba(255, 107, 139, 0.5);
+    border-radius: 2px;
+}
+
+/* 选项卡样式 */
+#historyTab, #achievementsTab {
+    position: relative;
+    transition: all 0.3s ease;
+}
+#historyTab::after, #achievementsTab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: theme('colors.primary');
+    transition: width 0.3s ease;
+}
+#historyTab.active::after, #achievementsTab.active::after {
+    width: 100%;
+}
+
+/* 历史记录项样式 */
+.history-item {
+    border-left: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+.history-item:hover {
+    border-left-color: theme('colors.primary');
+}
+
+/* 成就卡片样式 */
+.achievement-card {
+    transition: all 0.3s ease;
+}
+.achievement-unlocked {
+    background: linear-gradient(145deg, rgba(42, 42, 42, 0.8), rgba(52, 52, 52, 0.7));
+}
+.achievement-locked {
+    background: linear-gradient(145deg, rgba(32, 32, 32, 0.5), rgba(42, 42, 42, 0.4));
+}
+
+/* 响应式调整 */
+@media (max-width: 360px) {
+    /* 缩小字体和内边距 */
+    h1 { font-size: 1.25rem; }
+    .achievement-card p { font-size: 0.75rem; }
+    .history-item .grid-cols-3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .history-item .grid-cols-3 > div:last-child {
+        grid-column: span 2;
+        margin-top: 0.5rem;
+    }
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.history-item, .achievement-card {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* 延迟动画，营造序列感 */
+.history-item:nth-child(1) { animation-delay: 0.1s; }
+.history-item:nth-child(2) { animation-delay: 0.2s; }
+.history-item:nth-child(3) { animation-delay: 0.3s; }
+.achievement-card:nth-child(1) { animation-delay: 0.1s; }
+.achievement-card:nth-child(2) { animation-delay: 0.2s; }
+.achievement-card:nth-child(3) { animation-delay: 0.3s; }
+.achievement-card:nth-child(4) { animation-delay: 0.4s; }
+.achievement-card:nth-child(5) { animation-delay: 0.5s; }
+.achievement-card:nth-child(6) { animation-delay: 0.6s; }

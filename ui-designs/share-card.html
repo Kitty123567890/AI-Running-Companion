@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分享跑步成果 - 元气跑伴</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="css/share-card.css">
+</head>
+<body class="bg-background text-textPrimary min-h-screen flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="p-4 border-b border-white/10">
+        <div class="flex justify-between items-center">
+            <button id="backButton" class="p-2 rounded-full hover:bg-white/10 transition-colors">
+                <i class="fa fa-arrow-left"></i>
+            </button>
+            <h1 class="text-lg font-semibold">分享跑步成果</h1>
+            <button id="saveButton" class="text-primary text-sm font-medium">保存</button>
+        </div>
+    </header>
+
+    <!-- 分享卡片容器 -->
+    <main class="flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <!-- 分享卡片 -->
+            <div class="bg-dark rounded-2xl overflow-hidden shadow-glow border border-primary/30" id="shareCard">
+                <!-- 卡片头部 -->
+                <div class="bg-gradient-to-r from-primary/80 to-secondary/80 p-6 text-center">
+                    <h2 class="text-white text-xl font-bold mb-1">元气跑伴</h2>
+                    <p class="text-white/80 text-sm">我的跑步成就</p>
+                </div>
+
+                <!-- 卡片内容 -->
+                <div class="p-6">
+                    <!-- 用户信息 -->
+                    <div class="flex items-center mb-6">
+                        <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mr-3">
+                            <i class="fa fa-user text-primary"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium">跑步爱好者</h3>
+                            <p class="text-textTertiary text-sm">今天完成了跑步目标</p>
+                        </div>
+                    </div>
+
+                    <!-- 跑步数据 -->
+                    <div class="grid grid-cols-3 gap-4 mb-6 text-center">
+                        <div>
+                            <p class="text-textTertiary text-xs">距离</p>
+                            <p class="text-2xl font-bold" id="shareDistance">5.2<span class="text-sm font-normal text-textSecondary">km</span></p>
+                        </div>
+                        <div>
+                            <p class="text-textTertiary text-xs">时长</p>
+                            <p class="text-2xl font-bold" id="shareDuration">32<span class="text-sm font-normal text-textSecondary">分钟</span></p>
+                        </div>
+                        <div>
+                            <p class="text-textTertiary text-xs">配速</p>
+                            <p class="text-2xl font-bold" id="sharePace">6'<span class="text-sm font-normal text-textSecondary">12"</span></p>
+                        </div>
+                    </div>
+
+                    <!-- 哈特形象 -->
+                    <div class="flex justify-center mb-6">
+                        <div class="w-24 h-24 animate-float animate-heartbeat">
+                            <!-- 哈特形象 - Lv.5 元气爆棚状态 -->
+                            <svg viewBox="0 0 110 100" class="w-full h-full hart-glow">
+                                <!-- 哈特主体 -->
+                                <path d="M55,10 C75,10 90,30 90,50 C90,75 55,95 55,95 C55,95 20,75 20,50 C20,30 35,10 55,10 Z" fill="#FF6B8B"></path>
+                                <!-- 眼睛 -->
+                                <circle cx="40" cy="40" r="3" fill="white"></circle>
+                                <circle cx="70" cy="40" r="3" fill="white"></circle>
+                                <!-- 高光 -->
+                                <circle cx="41" cy="39" r="1.5" fill="white" opacity="0.8"></circle>
+                                <circle cx="71" cy="39" r="1.5" fill="white" opacity="0.8"></circle>
+                                <!-- 开心的表情 -->
+                                <path d="M45,55 Q55,65 65,55" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"></path>
+                                <!-- 腮红 -->
+                                <circle cx="35" cy="50" r="5" fill="rgba(255,255,255,0.5)"></circle>
+                                <circle cx="75" cy="50" r="5" fill="rgba(255,255,255,0.5)"></circle>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- 成就徽章 -->
+                    <div class="flex justify-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+                            <i class="fa fa-trophy text-primary text-xs"></i>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-secondary/20 border border-secondary/30 flex items-center justify-center">
+                            <i class="fa fa-bolt text-secondary text-xs"></i>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
+                            <i class="fa fa-medal text-textSecondary text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 卡片底部 -->
+                <div class="bg-white/5 p-4 text-center">
+                    <p class="text-textSecondary text-sm">#元气跑伴 #跑步成就 #健康生活</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 分享选项 -->
+    <footer class="p-4 border-t border-white/10">
+        <div class="flex justify-around">
+            <button class="flex flex-col items-center" id="shareToWechat">
+                <div class="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mb-1">
+                    <i class="fa fa-weixin text-green-500"></i>
+                </div>
+                <span class="text-sm">微信</span>
+            </button>
+            <button class="flex flex-col items-center" id="shareToWeibo">
+                <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mb-1">
+                    <i class="fa fa-weibo text-red-500"></i>
+                </div>
+                <span class="text-sm">微博</span>
+            </button>
+            <button class="flex flex-col items-center" id="shareToQQ">
+                <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mb-1">
+                    <i class="fa fa-qq text-blue-500"></i>
+                </div>
+                <span class="text-sm">QQ</span>
+            </button>
+            <button class="flex flex-col items-center" id="saveImage">
+                <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-1">
+                    <i class="fa fa-download text-textSecondary"></i>
+                </div>
+                <span class="text-sm">保存</span>
+            </button>
+        </div>
+    </footer>
+
+    <script src="js/share-card.js"></script>
+</body>
+</html>

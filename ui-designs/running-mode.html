@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>元气跑伴 - 跑步模式</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="css/running-mode.css">
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B8B', // 元气粉
+                        secondary: '#4A90E2', // 科技蓝
+                        dark: '#121212',
+                        light: '#F5F5F5',
+                        glass: 'rgba(255, 255, 255, 0.15)',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .float {
+                animation: float 6s ease-in-out infinite;
+            }
+            .animate-heartbeat {
+                animation: heartbeat 0.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+            }
+            @keyframes heartbeat {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.03); }
+            }
+            .glass-effect {
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body class="bg-dark font-inter text-light min-h-screen flex flex-col">
+    <!-- 背景效果 -->
+    <div class="fixed inset-0 bg-gradient-to-b from-primary/20 to-secondary/20 z-0"></div>
+    <div class="fixed top-1/4 left-1/4 w-64 h-64 bg-primary/30 rounded-full filter blur-3xl opacity-70 pulse-slow"></div>
+    <div class="fixed bottom-1/3 right-1/3 w-96 h-96 bg-secondary/30 rounded-full filter blur-3xl opacity-70 pulse-slow"></div>
+
+    <!-- 主容器 -->
+    <div class="relative z-10 flex flex-col h-screen max-w-md mx-auto w-full p-4">
+        <!-- 顶部状态栏 -->
+        <div class="flex justify-between items-center py-4">
+            <div class="text-lg font-semibold text-shadow">跑步模式</div>
+            <div class="text-sm opacity-80">
+                <i class="fa fa-signal mr-2"></i>98%
+            </div>
+        </div>
+
+        <!-- 中央哈特区域 -->
+        <div class="flex-1 flex flex-col items-center justify-center relative">
+            <!-- 哈特形象 -->
+            <div class="relative w-48 h-48 mb-8 animate-float animate-heartbeat">
+                <div class="absolute inset-0 bg-primary/20 rounded-full filter blur-xl pulse-slow"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <svg viewBox="0 0 110 100" class="w-32 h-32">
+                        <!-- 哈特主体 -->
+                        <path d="M55,10 C75,10 90,30 90,50 C90,75 55,95 55,95 C55,95 20,75 20,50 C20,30 35,10 55,10 Z" fill="url(#hart-gradient)"/>
+                        <!-- 眼睛 -->
+                        <circle cx="40" cy="40" r="3" fill="white"/>
+                        <circle cx="70" cy="40" r="3" fill="white"/>
+                        <!-- 高光 -->
+                        <circle cx="41" cy="39" r="1.5" fill="white" opacity="0.8"/>
+                        <circle cx="71" cy="39" r="1.5" fill="white" opacity="0.8"/>
+                        <!-- 光晕效果 -->
+                        <path d="M55,10 C75,10 90,30 90,50 C90,75 55,95 55,95 C55,95 20,75 20,50 C20,30 35,10 55,10 Z" fill="none" stroke="rgba(255,215,0,0.7)" stroke-width="2" filter="blur(3px)"/>
+                        <!-- 渐变定义 -->
+                        <defs>
+                            <radialGradient id="hart-gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                                <stop offset="0%" stop-color="#FF6B8B"/>
+                                <stop offset="100%" stop-color="#FF2D55"/>
+                            </radialGradient>
+                        </defs>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- 状态文字 -->
+            <div class="text-center mb-12">
+                <div class="text-2xl font-bold mb-2" id="statusText">等待开始</div>
+                <div class="text-light/60 text-sm">点击下方按钮开始跑步</div>
+            </div>
+
+            <!-- 数据卡片区域 -->
+            <div class="w-full glass-effect backdrop-blur-lg bg-glass rounded-2xl p-6 border border-white/10 shadow-lg">
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-primary" id="distance">0.00</div>
+                        <div class="text-light/60 text-sm mt-1">距离 (KM)</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-secondary" id="time">0:00</div>
+                        <div class="text-light/60 text-sm mt-1">时间</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-primary" id="pace">--:--</div>
+                        <div class="text-light/60 text-sm mt-1">配速 (分/KM)</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-secondary" id="calories">0</div>
+                        <div class="text-light/60 text-sm mt-1">卡路里</div>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- 地图UI模块 -->
+            <div class="w-full glass-effect backdrop-blur-lg bg-glass rounded-2xl p-4 border border-white/10 shadow-lg mt-6 mb-4">
+                <div class="text-center text-sm font-medium mb-3">实时地图</div>
+                <div class="relative bg-dark/50 rounded-xl h-48 overflow-hidden">
+                    <!-- 模拟地图网格背景 -->
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMDIwMjAiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzBoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0tNiAwSDI4djRoMnYtNHptMC02aC0ydjRoMnYtNHptNiAwSDMydjRoMnYtNHptMC02aC0ydjRoMnYtNHptLTEyIDBIMTh2NGgydi00em0wLTZoLTJ2NGgydi00em02IDBIMjR2NGgydi00em0wLTZoLTJ2NGgydi00eiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
+                    <!-- 地图占位符文字 -->
+                    <div class="absolute inset-0 flex items-center justify-center flex-col text-light/40">
+                        <i class="fa fa-map-marker text-3xl mb-2 text-primary"></i>
+                        <span>地图加载中...</span>
+                    </div>
+                    <!-- 模拟地图控件 -->
+                    <div class="absolute bottom-3 right-3 flex flex-col gap-2">
+                        <button class="w-8 h-8 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-xs hover:bg-white/30 transition-colors">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                        <button class="w-8 h-8 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-xs hover:bg-white/30 transition-colors">
+                            <i class="fa fa-minus"></i>
+                        </button>
+                        <button class="w-8 h-8 bg-primary/80 backdrop-blur rounded-full flex items-center justify-center text-xs hover:bg-primary transition-colors">
+                            <i class="fa fa-location-arrow"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部控制区域 -->
+        <div class="py-6">
+            <div class="flex justify-between mb-8">
+                <button class="glass-effect backdrop-blur-lg bg-glass rounded-full p-3 border border-white/10 flex flex-col items-center w-20 transition-all hover:scale-105">
+                    <i class="fa fa-bar-chart text-xl mb-2 text-primary"></i>
+                    <span class="text-sm">数据详情</span>
+                </button>
+                <button class="glass-effect backdrop-blur-lg bg-glass rounded-full p-3 border border-white/10 flex flex-col items-center w-20 transition-all hover:scale-105">
+                    <i class="fa fa-music text-xl mb-2 text-secondary"></i>
+                    <span class="text-sm">音乐</span>
+                </button>
+            </div>
+
+            <!-- 开始/暂停按钮 -->
+            <button id="startBtn" class="w-full h-16 rounded-full bg-primary text-white font-bold text-lg shadow-lg shadow-primary/30 flex items-center justify-center transition-all hover:scale-105 active:scale-95">
+                <i class="fa fa-play mr-2"></i>开始跑步
+            </button>
+            <!-- 结束跑步按钮 -->
+            <button id="endBtn" class="w-full h-16 rounded-full bg-red-500 text-white font-bold text-lg shadow-lg shadow-red-500/30 flex items-center justify-center transition-all hover:scale-105 active:scale-95 mt-4 hidden">
+                <i class="fa fa-stop mr-2"></i>结束跑步
+            </button>
+        </div>
+    </div>
+
+    <script src="js/running-mode.js"></script>
+</body>
+</html>

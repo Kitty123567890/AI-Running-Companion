@@ -40,6 +40,8 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     tts = TextToSpeech(this) { }
+    // 初始化元气值系统
+    vm.initVitalitySystem(this)
     setContent { App(vm, speak = { txt -> if (vm.voiceEnabled) tts?.speak(txt, TextToSpeech.QUEUE_FLUSH, null, "coach") }) }
   }
 
@@ -75,6 +77,58 @@ fun App(vm: RunViewModel, speak: (String)->Unit) {
           }
           Row(verticalAlignment = Alignment.CenterVertically) {
             Text("使用兼容 OpenAI 的接口"); Switch(checked = state.useLLM, onCheckedChange = { vm.setUseLLM(it) })
+          }
+        }
+
+        // 哈特形象和元气值显示
+        state.hartForm?.let { hartForm ->
+          Card {
+            Row(
+              modifier = Modifier.fillMaxWidth().padding(16.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              // 哈特形象
+              HartView(
+                hartForm = hartForm,
+                modifier = Modifier.weight(0.4f),
+                showLabel = false,
+                animate = state.running
+              )
+
+              // 元气值信息
+              Column(
+                modifier = Modifier.weight(0.6f).padding(start = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+              ) {
+                Text(
+                  text = "哈特 - ${hartForm.name}",
+                  style = MaterialTheme.typography.titleMedium,
+                  color = parseColorForText(hartForm.colorHex)
+                )
+                Text(
+                  text = hartForm.description,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = Color.Gray
+                )
+                LinearProgressIndicator(
+                  progress = (state.vitalityScore / 100.0).toFloat().coerceIn(0f, 1f),
+                  modifier = Modifier.fillMaxWidth(),
+                  color = parseColorForText(hartForm.colorHex)
+                )
+                Text(
+                  text = "元气值: ${String.format("%.1f", state.vitalityScore)}/100 (Lv.${state.vitalityLevel})",
+                  style = MaterialTheme.typography.bodyMedium
+                )
+                if (state.consecutiveDays > 0) {
+                  Text(
+                    text = "连续打卡: ${state.consecutiveDays} 天",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFFFD700)
+                  )
+                }
+              }
+            }
           }
         }
 
@@ -170,5 +224,16 @@ fun App(vm: RunViewModel, speak: (String)->Unit) {
         }
       }
     }
+  }
+}
+
+/**
+ * 解析颜色字符串为Compose Color
+ */
+private fun parseColorForText(colorHex: String): Color {
+  return try {
+    Color(android.graphics.Color.parseColor(colorHex))
+  } catch (e: Exception) {
+    Color.Gray
   }
 }
