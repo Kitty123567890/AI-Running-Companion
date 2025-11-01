@@ -11,6 +11,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -62,10 +66,20 @@ fun App(vm: RunViewModel, speak: (String)->Unit) {
   val state by vm.state.collectAsState()
   val ctx = LocalContext.current
   val scope = rememberCoroutineScope()
+  LaunchedEffect(Unit) {
+    vm.refreshCheckinUi(ctx)
+  }
 
   MaterialTheme(colorScheme = darkColorScheme()) {
     Surface(Modifier.fillMaxSize().background(Color(0xFF0C0F12))) {
-      Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      val scroll = rememberScrollState()
+      Column(
+        Modifier
+          .fillMaxSize()
+          .verticalScroll(scroll)
+          .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+      ) {
         // Header toggles
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
           Text("AI 跑步教练", style = MaterialTheme.typography.titleLarge)
@@ -78,11 +92,40 @@ fun App(vm: RunViewModel, speak: (String)->Unit) {
           }
         }
 
+        // Energy bar
+        Card { Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+          Text("元气值", style = MaterialTheme.typography.titleMedium, color = Color(0xFF9FB3C8))
+          Spacer(Modifier.width(12.dp))
+          LinearProgressIndicator(progress = { state.energyPercent / 100f }, modifier = Modifier.weight(1f).height(8.dp))
+          Spacer(Modifier.width(12.dp))
+          Text("${state.energyName} ${state.energyPercent}%")
+        } }
+
         if (state.useLLM) {
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = state.apiBase, onValueChange = vm::setApiBase, label = { Text("API 基址") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = state.model, onValueChange = vm::setModel, label = { Text("模型") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = state.apiKey, onValueChange = vm::setApiKey, label = { Text("API 密钥") }, modifier = Modifier.weight(1f))
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              OutlinedTextField(
+                value = state.apiBase,
+                onValueChange = vm::setApiBase,
+                label = { Text("API 基址") },
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+              )
+              OutlinedTextField(
+                value = state.model,
+                onValueChange = vm::setModel,
+                label = { Text("模型") },
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+              )
+            }
+            OutlinedTextField(
+              value = state.apiKey,
+              onValueChange = vm::setApiKey,
+              label = { Text("API 密钥") },
+              singleLine = true,
+              modifier = Modifier.fillMaxWidth()
+            )
           }
         }
 
@@ -102,7 +145,7 @@ fun App(vm: RunViewModel, speak: (String)->Unit) {
           }
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(value = state.gender, onValueChange = vm::setGender, label = { Text("性别") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = state.age, onValueChange = vm::setAge, label = { Text("年龄") }, keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+            OutlinedTextField(value = state.age, onValueChange = vm::setAge, label = { Text("年龄") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
           }
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { vm.start(ctx, speak) }, enabled = !state.running) { Text("开始跑步") }
@@ -123,12 +166,16 @@ fun App(vm: RunViewModel, speak: (String)->Unit) {
 
           // Map
           val camPosState = rememberCameraPositionState()
+          val config = LocalConfiguration.current
+          val mapHeight = (config.screenHeightDp.dp * 0.45f).coerceAtLeast(320.dp)
           LaunchedEffect(state.current) {
             val cur = state.current ?: return@LaunchedEffect
             camPosState.animate(CameraUpdateFactory.newLatLngZoom(cur, 15f))
           }
           GoogleMap(
-            modifier = Modifier.height(280.dp).fillMaxWidth(),
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(mapHeight),
             cameraPositionState = camPosState,
             onMapClick = { ll -> vm.setDestination(ll.latitude, ll.longitude, "地图选择") }
           ) {
@@ -149,7 +196,7 @@ fun App(vm: RunViewModel, speak: (String)->Unit) {
         } }
 
         // Chat panel
-        Card(modifier = Modifier.weight(1f, fill = false)) {
+        Card {
           Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("教练聊天", style = MaterialTheme.typography.titleMedium, color = Color(0xFF9FB3C8))
             LazyColumn(Modifier.heightIn(min = 200.dp, max = 320.dp)) {
@@ -167,6 +214,49 @@ fun App(vm: RunViewModel, speak: (String)->Unit) {
               OutlinedButton(onClick = { vm.clearChat() }) { Text("清空") }
             }
           }
+        }
+
+        // Goals & Check-in panel
+        var showGoalDialog by remember { mutableStateOf(false) }
+        Card { Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text("目标与打卡", style = MaterialTheme.typography.titleMedium, color = Color(0xFF9FB3C8))
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = { vm.doCheckin(ctx, "用户手动打卡", speak) }, enabled = !state.checkinDoneToday) { Text("今日打卡") }
+            Text(state.checkinStatus, color = Color(0xFF9FB3C8))
+          }
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = { showGoalDialog = true }) { Text("AI 目标建议") }
+          }
+        } }
+
+        if (showGoalDialog) {
+          var height by remember { mutableStateOf(0) }
+          var weight by remember { mutableStateOf(0.0) }
+          var purpose by remember { mutableStateOf("健康") }
+          var pb by remember { mutableStateOf("") }
+          var weeklyKm by remember { mutableStateOf(0) }
+          var days by remember { mutableStateOf(3) }
+          AlertDialog(
+            onDismissRequest = { showGoalDialog = false },
+            confirmButton = {
+              TextButton(onClick = {
+                showGoalDialog = false
+                vm.generateGoalAdvice(height, weight, purpose, pb, weeklyKm, days, speak)
+              }) { Text("生成建议") }
+            },
+            dismissButton = { TextButton(onClick = { showGoalDialog = false }) { Text("取消") } },
+            title = { Text("AI 目标建议问卷") },
+            text = {
+              Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = if (height==0) "" else height.toString(), onValueChange = { height = it.toIntOrNull() ?: 0 }, label = { Text("身高(cm)") })
+                OutlinedTextField(value = if (weight==0.0) "" else weight.toString(), onValueChange = { weight = it.toDoubleOrNull() ?: 0.0 }, label = { Text("体重(kg)") })
+                OutlinedTextField(value = purpose, onValueChange = { purpose = it }, label = { Text("跑步目的") })
+                OutlinedTextField(value = pb, onValueChange = { pb = it }, label = { Text("当前PB（如 5K 24:30）") })
+                OutlinedTextField(value = if (weeklyKm==0) "" else weeklyKm.toString(), onValueChange = { weeklyKm = it.toIntOrNull() ?: 0 }, label = { Text("周跑量(公里)") })
+                OutlinedTextField(value = if (days==0) "" else days.toString(), onValueChange = { days = it.toIntOrNull() ?: 0 }, label = { Text("每周可训练天数") })
+              }
+            }
+          )
         }
       }
     }

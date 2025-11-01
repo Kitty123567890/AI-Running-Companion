@@ -6,17 +6,26 @@ import android.content.Intent
 import android.location.Location
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ai_running_companion.LocationUtils.Point
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.CancellationTokenSource
-import com.google.maps.android.compose.LatLng
+import com.google.android.gms.maps.model.LatLng
+import android.os.Bundle
+import android.speech.RecognitionListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 
 enum class RunMode { Free, Dest }
 
@@ -45,7 +54,13 @@ data class RunUiState(
   val routePlan: List<LatLng> = emptyList(),
   val messages: List<ChatMsg> = emptyList(),
   val inputText: String = "",
-  val recognizing: Boolean = false
+  val recognizing: Boolean = false,
+  // Energy system
+  val energyPercent: Int = 100,
+  val energyName: String = "元气爆棚",
+  // Check-in
+  val checkinStatus: String = "",
+  val checkinDoneToday: Boolean = false
 )
 
 class RunViewModel : ViewModel() {
@@ -65,6 +80,65 @@ class RunViewModel : ViewModel() {
 
   private var speechRecognizer: SpeechRecognizer? = null
 
+  // Energy + periodic coaching
+  private val energy = EnergySystem()
+  private var tickerJob: Job? = null
+  private var lastCoachAt: Long = 0L
+  private var lastInstPaceMinPerKm: Double? = null
+  private var lastEnergyUpdateAt: Long = System.currentTimeMillis()
+
+  // Check-ins
+  @Serializable
+  data class Checkin(val date: String, val distanceKm: Double? = null, val durationMin: Int? = null, val note: String? = null)
+  private val json = Json { ignoreUnknownKeys = true }
+  private fun prefs(context: Context): SharedPreferences = context.getSharedPreferences("ai_rc_prefs", Context.MODE_PRIVATE)
+  private fun fmtDateKey(ts: Long = System.currentTimeMillis()): String {
+    val c = java.util.Calendar.getInstance().apply { timeInMillis = ts }
+    val y = c.get(java.util.Calendar.YEAR)
+    val m = (c.get(java.util.Calendar.MONTH) + 1).toString().padStart(2, '0')
+    val d = c.get(java.util.Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
+    return "$y-$m-$d"
+  }
+  private fun loadCheckins(context: Context): MutableList<Checkin> {
+    val s = prefs(context).getString("checkins", null) ?: return mutableListOf()
+    return try { json.decodeFromString<List<Checkin>>(s).toMutableList() } catch (_: Exception) { mutableListOf() }
+  }
+  private fun saveCheckins(context: Context, arr: List<Checkin>) {
+    prefs(context).edit().putString("checkins", json.encodeToString(arr)).apply()
+  }
+  private fun calcStreak(arr: List<Checkin>): Int {
+    val set = arr.map { it.date }.toSet()
+    var streak = 0
+    var cal = java.util.Calendar.getInstance()
+    while (set.contains(fmtDateKey(cal.timeInMillis))) {
+      streak++
+      cal.add(java.util.Calendar.DAY_OF_MONTH, -1)
+    }
+    return streak
+  }
+  fun refreshCheckinUi(context: Context) {
+    val arr = loadCheckins(context)
+    val total = arr.size
+    val streak = calcStreak(arr)
+    val today = fmtDateKey()
+    val doneToday = arr.any { it.date == today }
+    val status = if (doneToday) "已打卡｜连续 ${streak} 天｜累计 ${total} 次" else "未打卡｜连续 ${streak} 天｜累计 ${total} 次"
+    _state.value = _state.value.copy(checkinStatus = status, checkinDoneToday = doneToday)
+  }
+  fun doCheckin(context: Context, note: String? = null, speak: (String)->Unit) {
+    val arr = loadCheckins(context)
+    val today = fmtDateKey()
+    if (arr.none { it.date == today }) {
+      val durationMin = startTime?.let { (((System.currentTimeMillis() - it) / 1000) / 60).toInt() } ?: 0
+      arr.add(Checkin(today, _state.value.totalDistanceKm, durationMin, note))
+      saveCheckins(context, arr)
+      refreshCheckinUi(context)
+      val msg = "已完成今日打卡，继续加油！"
+      addMsg("assistant", msg)
+      if (voiceEnabled) speak(msg)
+    }
+  }
+
   fun setVoiceEnabled(v: Boolean) { voiceEnabled = v; _state.value = _state.value.copy(voiceEnabled = v) }
   fun setUseLLM(v: Boolean) { _state.value = _state.value.copy(useLLM = v) }
   fun setApiBase(v: String) { _state.value = _state.value.copy(apiBase = v) }
@@ -82,9 +156,13 @@ class RunViewModel : ViewModel() {
     lastKmSpoken = 0
     lastKmAtTime = null
     lastKmAtDist = 0.0
+    lastInstPaceMinPerKm = null
+    energy.reset()
+    tickerJob?.cancel(); tickerJob = null
     _state.value = _state.value.copy(
       running = false, totalDistanceKm = 0.0, instPaceLabel = "-", avgPaceLabel = "-", elapsedLabel = "-",
-      track = emptyList(), routePlan = emptyList()
+      track = emptyList(), routePlan = emptyList(),
+      energyPercent = energy.getEnergy(), energyName = energy.getStatus().name
     )
   }
 
@@ -116,14 +194,26 @@ class RunViewModel : ViewModel() {
     lastKmSpoken = 0
     lastKmAtTime = startTime
     lastKmAtDist = 0.0
+    lastEnergyUpdateAt = System.currentTimeMillis()
     _state.value = _state.value.copy(running = true)
     addMsg("assistant", "已开始跑步。定位初始化中……")
     if (voiceEnabled) speak("已开始跑步，定位初始化中")
+
+    // Start periodic energy updates and realtime coaching every 2s/30s
+    tickerJob?.cancel()
+    tickerJob = viewModelScope.launch {
+      while (_state.value.running) {
+        delay(2000)
+        updateEnergyTick()
+        maybeCoachRealtime(speak)
+      }
+    }
   }
 
   fun stop(speak: (String)->Unit) {
     fused?.removeLocationUpdates(callback!!)
     _state.value = _state.value.copy(running = false)
+    tickerJob?.cancel(); tickerJob = null
     val el = (System.currentTimeMillis() - (startTime ?: System.currentTimeMillis())) / 1000
     // Simple finish tip using Coach
     val tips = Coach.analyze(
@@ -155,6 +245,7 @@ class RunViewModel : ViewModel() {
       }
       else -> null
     }
+    lastInstPaceMinPerKm = instPace
     val avgPace = if (total > 0) (elapsedSec / 60.0) / total else null
     val last = LatLng(p.lat, p.lng)
     val toDest = _state.value.destLatLng?.let { d ->
@@ -174,6 +265,8 @@ class RunViewModel : ViewModel() {
 
     maybePlanRoute()
     maybeAnnounceKilometer(instPace, speak)
+    // also refresh energy on location update
+    updateEnergyTick()
   }
 
   private fun maybeAnnounceKilometer(lapPace: Double?, speak: (String)->Unit) {
@@ -254,7 +347,6 @@ class RunViewModel : ViewModel() {
     addMsg("user", text)
     _state.value = _state.value.copy(inputText = "")
     // Local coach
-    val avgPace = _state.value.avgPaceLabel.takeIf { it != "-" }
     val avgPaceVal: Double? = null // kept simple
     val tips = Coach.analyze(
       Coach.RunSummary(
@@ -288,11 +380,106 @@ class RunViewModel : ViewModel() {
     addMsg("assistant", reply)
     if (voiceEnabled) speak(reply)
   }
+
+  private fun updateEnergyTick() {
+    val now = System.currentTimeMillis()
+    val dt = (now - lastEnergyUpdateAt) / 1000.0
+    lastEnergyUpdateAt = now
+    val running = _state.value.running
+    val durationSec = startTime?.let { ((now - it) / 1000) } ?: 0
+    val updated = energy.update(
+      running = running,
+      instantPaceMinPerKm = lastInstPaceMinPerKm,
+      targetPaceMinPerKm = 6.0,
+      durationSec = durationSec,
+      heartRate = null,
+      justStopped = !running && points.isNotEmpty(),
+      dtSeconds = dt
+    )
+    val st = energy.getStatus()
+    _state.value = _state.value.copy(energyPercent = updated, energyName = st.name)
+  }
+
+  private fun maybeCoachRealtime(speak: (String)->Unit) {
+    val now = System.currentTimeMillis()
+    val elapsedSec = startTime?.let { ((now - it) / 1000) } ?: 0
+    if (!_state.value.running) return
+    if (elapsedSec < 60) return
+    if (_state.value.totalDistanceKm < 0.2) return
+    if (now - lastCoachAt < 30_000) return
+    lastCoachAt = now
+
+    val ip = lastInstPaceMinPerKm
+    val ap: Double? = null // keep simple; label already shown
+    val toDest = _state.value.toDestKm
+    val parts = mutableListOf<String>()
+    fun fmt(minPerKm: Double?): String {
+      if (minPerKm == null || minPerKm <= 0) return "-"
+      val m = floor(minPerKm).toInt(); val s = (((minPerKm - m) * 60).roundToInt())
+      return "${m}分${s.toString().padStart(2,'0')}秒/公里"
+    }
+    ip?.let { parts += "即时 ${fmt(it)}" }
+    if (ap != null) parts += "平均 ${fmt(ap)}"
+    if (_state.value.mode == RunMode.Dest && toDest != null) parts += "距目的地约 ${"%.2f".format(toDest)} 公里"
+    if (ip != null && ap != null) {
+      val delta = ip - ap
+      when {
+        delta <= -0.2 -> parts += "配速略快，注意放松上身。"
+        delta >= 0.3 -> parts += "配速偏慢，可小幅提高步频。"
+        else -> parts += "节奏稳定，保持呼吸顺畅。"
+      }
+    } else {
+      parts += "保持节奏，注意呼吸与放松。"
+    }
+    val msg = parts.joinToString("，")
+    if (msg.isNotBlank()) { addMsg("assistant", msg); if (voiceEnabled) speak(msg) }
+  }
+
+  // ----- AI 目标建议（规则 + 可选LLM） -----
+  fun generateGoalAdvice(
+    heightCm: Int?, weightKg: Double?, purpose: String?, pb: String?, weeklyKm: Int?, daysPerWeek: Int?,
+    speak: (String)->Unit
+  ) {
+    viewModelScope.launch {
+      val bmi = if (heightCm != null && weightKg != null && heightCm > 0 && weightKg > 0) {
+        val h = heightCm / 100.0; (weightKg / (h * h))
+      } else null
+      var advice: String? = null
+      if (_state.value.useLLM && _state.value.apiBase.isNotBlank()) {
+        val payload = mapOf(
+          "heightCm" to heightCm, "weightKg" to weightKg, "bmi" to (bmi?.let { kotlin.math.round(it * 10)/10 }),
+          "purpose" to (purpose ?: "健康"), "pb" to (pb ?: ""), "weeklyKm" to (weeklyKm ?: 0), "daysPerWeek" to (daysPerWeek ?: 3),
+          "age" to _state.value.age, "gender" to _state.value.gender
+        )
+        val sys = "你是一名专业跑步教练与体能训练师。基于用户的身高、体重（BMI）、周跑量、可训练天数、跑步目的与PB等信息，给出中文目标建议：包含阶段目标（4-8周）、每周训练结构（质量课与轻松跑分配）、推荐配速区间与注意事项，控制在180字内。"
+        val messages = listOf(
+          NetClients.ChatMessage("system", sys),
+          NetClients.ChatMessage("user", "用户画像 JSON：$payload")
+        )
+        advice = NetClients.chatCompletion(_state.value.apiBase, _state.value.model, _state.value.apiKey, messages)
+      }
+      if (advice == null) {
+        val cues = mutableListOf<String>()
+        bmi?.let {
+          when {
+            it >= 27 -> cues += "优先控强度，逐步增加跑量"
+            it < 18.5 -> cues += "注意营养与力量训练"
+          }
+        }
+        if ((weeklyKm ?: 0) < 20) cues += "先打基础，逐步加到每周20–30km"
+        if ((daysPerWeek ?: 0) < 3) cues += "建议每周≥3天跑步"
+        val wk = weeklyKm ?: 0
+        val days = daysPerWeek ?: 3
+        val tip = if (cues.isNotEmpty()) cues.joinToString("，") else "循序渐进，注意恢复"
+        advice = "${purpose ?: "健康"}目标建议：4–6周阶段。每周${days}天，1次质量课（节奏或间歇）+ 2–3次轻松跑；周跑量约${kotlin.math.max(15, kotlin.math.min(45, wk + 10))}km；训练配速以可对话强度为主，质量课略快。${tip}。"
+      }
+      addMsg("assistant", advice)
+      if (voiceEnabled) speak(advice)
+    }
+  }
 }
 
 // Minimal speech recognition listener wrapper
-import android.os.Bundle
-import android.speech.RecognitionListener
 
 class SimpleRecognitionListener(val onFinal: (String)->Unit) : RecognitionListener {
   override fun onReadyForSpeech(params: Bundle?) {}
@@ -309,4 +496,3 @@ class SimpleRecognitionListener(val onFinal: (String)->Unit) : RecognitionListen
     if (finalText.isNotBlank()) onFinal(finalText)
   }
 }
-
