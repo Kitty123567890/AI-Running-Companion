@@ -1,0 +1,12 @@
+# Secrets
+.env
+
+# Android build files
+**/build/
+.gradle/
+.idea/
+local.properties
+android/local.properties
+
+# macOS
+.DS_Store

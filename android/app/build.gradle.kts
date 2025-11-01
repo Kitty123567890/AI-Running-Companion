@@ -8,12 +8,36 @@ android {
   namespace = "com.example.ai_running_companion"
   compileSdk = 34
 
+  // Load API keys from environment or .env file
+  val envFile = rootProject.file(".env")
+  val envMap: Map<String, String> = if (envFile.exists()) {
+    envFile.readLines()
+      .map { it.trim() }
+      .filter { it.isNotEmpty() && !it.startsWith("#") }
+      .map { line ->
+        val idx = line.indexOf('=')
+        if (idx <= 0) "" to "" else line.substring(0, idx).trim() to line.substring(idx + 1).trim()
+      }
+      .filter { it.first.isNotEmpty() }
+      .toMap()
+  } else emptyMap()
+
+  fun getSecret(name: String): String =
+    System.getenv(name)
+      ?: (envMap[name])
+      ?: (project.findProperty(name) as String?)
+      ?: ""
+
   defaultConfig {
     applicationId = "com.example.ai_running_companion"
     minSdk = 26
     targetSdk = 34
     versionCode = 1
     versionName = "1.0"
+
+    // Expose secrets to AndroidManifest via placeholders
+    manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = getSecret("GOOGLE_MAPS_API_KEY")
+    manifestPlaceholders["AMAP_API_KEY"] = getSecret("AMAP_API_KEY")
   }
 
   buildTypes {

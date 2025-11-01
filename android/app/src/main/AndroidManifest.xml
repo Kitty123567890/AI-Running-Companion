@@ -14,10 +14,15 @@
     android:supportsRtl="true"
     android:theme="@style/Theme.AIRunningCompanion">
 
-    <!-- Replace with your Maps API key if using Google Maps -->
+    <!-- Google Maps API Key (injected via manifestPlaceholders) -->
     <meta-data
       android:name="com.google.android.geo.API_KEY"
-      android:value="AIzaSyBnegvxtzKx1UHFVj1LhTQq796o3zG9jIQ" />
+      android:value="${GOOGLE_MAPS_API_KEY}" />
+
+    <!-- AMap (高德) API Key (optional; injected via manifestPlaceholders) -->
+    <meta-data
+      android:name="com.amap.api.v2.apikey"
+      android:value="${AMAP_API_KEY}" />
 
     <activity android:name=".MainActivity"
       android:exported="true">
