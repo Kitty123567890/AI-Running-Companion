@@ -17,6 +17,7 @@
   const stopRunBtn = document.getElementById('stopRun');
   const destField = document.getElementById('destField');
   const searchPlaceBtn = document.getElementById('searchPlace');
+  const startNavBtn = document.getElementById('startNav');
   const mapEl = document.getElementById('map');
   // Goals & check-in UI
   const aiGoalBtn = document.getElementById('aiGoalBtn');
@@ -117,6 +118,7 @@
     };
     ctr.appendChild(btn('居中', '居中到当前位置', () => recenterOnRunner()));
     ctr.appendChild(btn('全览', '全览路线', () => fitToRoute()));
+    ctr.appendChild(btn('导航', '在高德地图中导航', () => triggerGaodeNavigation()));
     // AMap container is a div; we can append our control into mapEl
     mapEl.style.position = mapEl.style.position || 'relative';
     mapEl.appendChild(ctr);
@@ -782,6 +784,40 @@
     });
   }
 
+  // --- Gaode (AMap) navigation deeplink ---
+  function triggerGaodeNavigation() {
+    try {
+      if (!state.run || !isFiniteNum(state.run?.destLat) || !isFiniteNum(state.run?.destLng)) {
+        addMsg('assistant', '请先设置目的地');
+        return;
+      }
+      // Try current position from marker or last track
+      let fromLat = null, fromLng = null;
+      if (state.posMarker) {
+        const p = state.posMarker.getPosition();
+        const lng = typeof p?.getLng === 'function' ? p.getLng() : p?.lng;
+        const lat = typeof p?.getLat === 'function' ? p.getLat() : p?.lat;
+        if (isFiniteNum(lat) && isFiniteNum(lng)) { fromLat = lat; fromLng = lng; }
+      }
+      if (!isFiniteNum(fromLat) || !isFiniteNum(fromLng)) {
+        const last = state.track[state.track.length-1];
+        if (last && isFiniteNum(last.lat) && isFiniteNum(last.lng)) { fromLat = last.lat; fromLng = last.lng; }
+      }
+      if (!isFiniteNum(fromLat) || !isFiniteNum(fromLng)) {
+        addMsg('assistant', '尚未获取到当前位置，稍后再试');
+        return;
+      }
+      const toLat = state.run.destLat, toLng = state.run.destLng;
+      const name = encodeURIComponent(state.run?.destLabel || '目的地');
+      // AMap URI: https://uri.amap.com/navigation?from=lng,lat&to=lng,lat&mode=walk&callnative=1
+      const url = `https://uri.amap.com/navigation?from=${fromLng},${fromLat}&to=${toLng},${toLat},${name}&mode=walk&policy=0&callnative=1`;
+      window.open(url, '_blank');
+    } catch (e) {
+      console.warn('triggerGaodeNavigation error', e);
+      try { alert('无法启动导航，请稍后重试'); } catch {}
+    }
+  }
+
   function maybePlanRoute(){
     if (!state.map) return;
     if (state.run && isFiniteNum(state.run?.destLat) && isFiniteNum(state.run?.destLng)) {
@@ -1026,6 +1062,10 @@
         planRoute({ lat: last.lat, lng: last.lng }, { lat: res.lat, lng: res.lng });
       }
     });
+  }
+
+  if (startNavBtn) {
+    startNavBtn.addEventListener('click', () => triggerGaodeNavigation());
   }
 
   clearRunBtn.addEventListener('click', () => {

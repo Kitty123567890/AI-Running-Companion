@@ -141,9 +141,10 @@
           </div>
           <div class="field" id="destField" style="display:none">
             <label for="destination">目的地</label>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap;">
               <input id="destination" name="destination" type="text" placeholder="名称或经纬度（如 31.23,121.47）" />
               <button type="button" id="searchPlace">搜索</button>
+              <button type="button" id="startNav" title="使用高德地图导航">导航</button>
             </div>
             <small>提示：可输入地名后点击「搜索」，或直接填入"纬度,经度"。设置目的地后将自动规划步行路线。</small>
           </div>
